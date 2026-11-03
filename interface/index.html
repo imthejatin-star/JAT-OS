@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#080b12">
+<title>JAT OS</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="ambient"></div>
+
+<header>
+  <div class="brand">
+    <div class="logo">J<span>.</span></div>
+    <div>
+      <div class="brand-name">JAT OS</div>
+      <div class="brand-sub">PERSONAL ENVIRONMENT</div>
+    </div>
+  </div>
+  <div class="system-status">
+    <span class="status-dot"></span>
+    <span>ONLINE</span>
+  </div>
+</header>
+
+<main>
+  <section id="home" class="screen active">
+    <div class="greeting">
+      <div class="eyebrow">YOUR PERSONAL SPACE</div>
+      <div id="date" class="date"></div>
+      <div id="clock" class="clock">00:00</div>
+      <div class="welcome">Welcome back.</div>
+    </div>
+
+    <div class="section-heading">
+      <span>OVERVIEW</span>
+      <span class="muted">SYSTEM 01</span>
+    </div>
+
+    <div class="system-card">
+      <div class="card-top">
+        <span>JAT OS ENVIRONMENT</span>
+        <span class="live">ACTIVE</span>
+      </div>
+      <div class="system-title">Everything<br>in one place.</div>
+      <div class="system-description">
+        Your personal computing environment is ready.
+      </div>
+      <div class="card-bottom">
+        <span>ANDROID 14</span>
+        <span>BUILD 001</span>
+      </div>
+    </div>
+
+    <div class="section-heading">
+      <span>QUICK ACCESS</span>
+      <span class="muted">APPLICATIONS</span>
+    </div>
+
+    <div class="quick-grid">
+      <button class="quick-item" data-app="Files">
+        <span class="app-icon">◫</span>
+        <span>Files</span>
+      </button>
+      <button class="quick-item" data-app="Notes">
+        <span class="app-icon">▤</span>
+        <span>Notes</span>
+      </button>
+      <button class="quick-item" data-app="Browser">
+        <span class="app-icon">◎</span>
+        <span>Browser</span>
+      </button>
+      <button class="quick-item" data-app="Settings">
+        <span class="app-icon">⚙</span>
+        <span>Settings</span>
+      </button>
+    </div>
+
+    <div class="section-heading">
+      <span>DEVELOPMENT STATUS</span>
+      <span class="muted">PROJECT</span>
+    </div>
+
+    <div class="info-card">
+      <div class="info-row">
+        <span>Project</span>
+        <strong>JAT OS</strong>
+      </div>
+      <div class="info-row">
+        <span>Device</span>
+        <strong>Galaxy Tab A7 Lite</strong>
+      </div>
+      <div class="info-row">
+        <span>Development</span>
+        <strong class="accent">In progress</strong>
+      </div>
+    </div>
+  </section>
+
+  <section id="apps" class="screen">
+    <div class="page-title">Applications</div>
+    <div class="page-subtitle">YOUR DIGITAL WORKSPACE</div>
+
+    <input id="search" class="search" placeholder="Search applications..." autocomplete="off">
+
+    <div id="app-list" class="app-list">
+      <button class="app-entry" data-app="Files"><span>◫</span><div><b>Files</b><small>File management</small></div></button>
+      <button class="app-entry" data-app="Notes"><span>▤</span><div><b>Notes</b><small>Personal workspace</small></div></button>
+      <button class="app-entry" data-app="Browser"><span>◎</span><div><b>Browser</b><small>Internet access</small></div></button>
+      <button class="app-entry" data-app="Calculator"><span>⊞</span><div><b>Calculator</b><small>Calculations</small></div></button>
+      <button class="app-entry" data-app="Settings"><span>⚙</span><div><b>Settings</b><small>Environment configuration</small></div></button>
+      <button class="app-entry" data-app="Terminal"><span>⌘</span><div><b>Terminal</b><small>Development environment</small></div></button>
+    </div>
+  </section>
+
+  <section id="settings" class="screen">
+    <div class="page-title">Settings</div>
+    <div class="page-subtitle">ENVIRONMENT CONFIGURATION</div>
+
+    <div class="settings-group">
+      <div class="settings-label">APPEARANCE</div>
+      <div class="setting">
+        <div><b>Light interface</b><small>Change the environment theme</small></div>
+        <button id="theme-toggle" class="toggle">OFF</button>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">DEVICE INFORMATION</div>
+      <div class="info-row"><span>Device</span><strong>SM-T225</strong></div>
+      <div class="info-row"><span>Android</span><strong>14</strong></div>
+      <div class="info-row"><span>Architecture</span><strong>ARM64</strong></div>
+      <div class="info-row"><span>Interface version</span><strong>0.1.0</strong></div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">ABOUT</div>
+      <div class="system-card compact">
+        <div class="system-title">JAT OS</div>
+        <div class="system-description">A personal Android computing environment, developed independently.</div>
+      </div>
+    </div>
+  </section>
+
+  <section id="notes" class="screen">
+    <div class="page-title">Notes</div>
+    <div class="page-subtitle">PERSONAL WORKSPACE</div>
+    <textarea id="notes-input" placeholder="Write something..."></textarea>
+    <div class="note-footer">
+      <span id="save-status">Saved locally</span>
+      <button id="clear-notes">CLEAR</button>
+    </div>
+  </section>
+
+  <section id="detail" class="screen">
+    <button id="back-button" class="back">← BACK</button>
+    <div class="page-title" id="detail-title">Application</div>
+    <div class="page-subtitle">APPLICATION INFORMATION</div>
+    <div class="system-card">
+      <div class="system-title" id="detail-name"></div>
+      <div class="system-description" id="detail-description"></div>
+    </div>
+    <div id="detail-action"></div>
+  </section>
+</main>
+
+<nav>
+  <button class="nav-item active" data-screen="home">
+    <span>⌂</span><small>Home</small>
+  </button>
+  <button class="nav-item" data-screen="apps">
+    <span>▦</span><small>Apps</small>
+  </button>
+  <button class="nav-item" data-screen="settings">
+    <span>⚙</span><small>Settings</small>
+  </button>
+</nav>
+
+<div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
