@@ -1,0 +1,16 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.jatos.launcher'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.jatos.launcher'
+        minSdk 26
+        targetSdk 28
+        versionCode 1
+        versionName '0.2.0'
+    }
+}
