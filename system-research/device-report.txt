@@ -1,0 +1,11 @@
+MODEL: SM-T225
+DEVICE: gta7lite
+ANDROID_VERSION: 14
+ANDROID_SDK: 34
+BUILD_NUMBER: UP1A.231005.007.T225XXSAEYA4
+SECURITY_PATCH: 2025-01-01
+PROCESSOR_ARCHITECTURE: aarch64
+PYTHON: 3.13.13
+NODE: /data/data/com.termux/files/usr/bin/node
+GIT: /data/data/com.termux/files/usr/bin/git
+TERMUX_HOME: /data/data/com.termux/files/home

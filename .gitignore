@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.env
+*.log
+node_modules/
+build/
+dist/
+*.apk
+*.aab
+.DS_Store
