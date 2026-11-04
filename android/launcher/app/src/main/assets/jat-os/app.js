@@ -547,172 +547,278 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-/* JAT OS - CONTROLLED SEQUENTIAL STARTUP */
+/* JAT OS HACKER REFINEMENT */
 (() => {
-  function startJatSystemBoot() {
-    if (window.__jatSystemBootStarted) return;
-    window.__jatSystemBootStarted = true;
+  const FAV_KEY = "jat_os_favourite_apps_v1";
+  const readFavs = () => {
+    try {
+      const v = JSON.parse(localStorage.getItem(FAV_KEY) || "[]");
+      return Array.isArray(v) ? v : [];
+    } catch (_) { return []; }
+  };
+  const writeFavs = v => localStorage.setItem(FAV_KEY, JSON.stringify(v));
 
-    const core = document.createElement("div");
-    core.id = "jat-boot-core";
-    document.body.appendChild(core);
+  function appIdentity(card) {
+    const packageName =
+      card.dataset.package ||
+      card.dataset.packagename ||
+      card.dataset.appPackage ||
+      card.getAttribute("data-app-package") || "";
 
-    requestAnimationFrame(() => {
-      core.classList.add("ignited");
-    });
+    const launchText = card.getAttribute("onclick") || "";
+    const match = launchText.match(/launchApp\s*\(\s*['"]([^'"]+)/);
+    const pkg = packageName || (match ? match[1] : "");
 
-    const excluded = new Set([
-      "SCRIPT", "STYLE", "LINK", "META", "TEMPLATE",
-      "NOSCRIPT", "OPTION"
-    ]);
+    const nameNode = card.querySelector(
+      ".app-name, .app-title, .app-label, .name, h3, h4, p"
+    );
+    const name = (nameNode?.textContent || card.innerText || "")
+      .trim().split("\n")[0].slice(0, 60);
 
-    const selector = [
-      "header", "nav", "main", "section", "aside", "footer",
-      ".topbar", ".navbar", ".sidebar", ".toolbar", ".hero",
-      ".dashboard", ".main-content", ".home-section",
-      ".panel", ".card", ".folder-card", ".app-card",
-      ".app-grid", ".dock", ".status-bar",
-      ".customize-section", ".settings-panel",
-      "button"
-    ].join(",");
-
-    const candidates = Array.from(document.querySelectorAll(selector));
-
-    function isVisible(el) {
-      if (!el || excluded.has(el.tagName)) return false;
-      if (el.closest("[hidden], [aria-hidden='true']")) return false;
-
-      const style = getComputedStyle(el);
-      if (style.display === "none" ||
-          style.visibility === "hidden" ||
-          Number(style.opacity) === 0) return false;
-
-      const rect = el.getBoundingClientRect();
-      return rect.width > 0 && rect.height > 0;
-    }
-
-    // Keep only visible elements and remove duplicate selector matches.
-    const elements = [...new Set(candidates)].filter(isVisible);
-
-    // Group by depth so parent containers appear before their contents.
-    const depth = el => {
-      let count = 0;
-      for (let p = el.parentElement; p; p = p.parentElement) count++;
-      return count;
-    };
-
-    elements.sort((a, b) => depth(a) - depth(b));
-
-    // Do not animate nested descendants of a hidden element simultaneously.
-    const layers = [];
-    elements.forEach(el => {
-      const d = depth(el);
-      if (!layers[d]) layers[d] = [];
-      layers[d].push(el);
-    });
-
-    // Hide the selected elements without changing their layout.
-    elements.forEach(el => {
-      el.classList.add("jat-boot-hidden");
-    });
-
-    // Reveal one feature at a time, with at least 1.1 seconds between starts.
-    let index = 0;
-    const revealNext = () => {
-      if (index >= elements.length) return;
-
-      const el = elements[index++];
-      el.classList.remove("jat-boot-hidden");
-      el.classList.add("jat-boot-reveal");
-
-      window.setTimeout(revealNext, 1100);
-    };
-
-    // Let the core light begin glowing before the interface starts appearing.
-    window.setTimeout(revealNext, 5000);
+    return { id: pkg || name, name, pkg };
   }
 
-  if (document.readyState === "complete") {
-    window.setTimeout(startJatSystemBoot, 500);
-  } else {
-    window.addEventListener("load", () => {
-      window.setTimeout(startJatSystemBoot, 500);
-    }, { once: true });
-  }
-})();
-
-
-/* JAT OS ORIGINAL STATUS LIGHT UPGRADE */
-(() => {
-  function activateOriginalStatus() {
-    // Remove the duplicate light, including any delayed insertion.
-    document.querySelectorAll("#jat-boot-core").forEach(el => el.remove());
-
-    const all = Array.from(document.querySelectorAll("body *"));
-
-    // Find the smallest element whose complete text is the status label.
-    const status = all.find(el => {
-      if (el.children.length > 0) return false;
-      const value = (el.textContent || "").trim().toUpperCase();
-      return value === "ONLINE" || value === "OFFLINE";
-    });
-
-    if (!status || status.dataset.jatStatusAnimated === "yes") return false;
-
-    status.dataset.jatStatusAnimated = "yes";
-
-    // Locate the existing light immediately before the status label.
-    const parent = status.parentElement;
-    let light = status.previousElementSibling;
-
-    if (!light && parent) {
-      light = Array.from(parent.children).find(el =>
-        el !== status &&
-        el.getBoundingClientRect().width <= 24 &&
-        el.getBoundingClientRect().height <= 24
-      );
-    }
-
-    // If the dot is nested inside the same status container, locate it there.
-    if (!light && parent) {
-      light = parent.querySelector(
-        ".status-dot, .status-light, .indicator, .dot, i, span"
-      );
-      if (light === status) light = null;
-    }
-
-    if (light) {
-      light.classList.add("jat-original-status-light");
-    }
-
-    // Animate the actual label without changing its surrounding layout.
-    status.textContent = "OFFLINE";
-    status.classList.add("jat-original-status-text");
-
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        status.textContent = "ONLINE";
-      }, 3500);
-    });
-
-    return true;
+  function appCards() {
+    const selectors = [
+      ".app-card", ".app-item", ".application-card",
+      "[data-package]", "[data-app-package]", "[data-packagename]"
+    ];
+    const found = new Set();
+    selectors.forEach(s => document.querySelectorAll(s).forEach(el => {
+      if (el.closest(".jat-favourites")) return;
+      if (el.querySelector("img") || el.dataset.package ||
+          el.dataset.packagename || el.dataset.appPackage) found.add(el);
+    }));
+    return [...found].filter(el => appIdentity(el).id);
   }
 
-  function begin() {
-    // Retry briefly in case the launcher status is created after page load.
-    let attempts = 0;
-    const timer = setInterval(() => {
-      document.querySelectorAll("#jat-boot-core").forEach(el => el.remove());
+  function getFavouriteHost() {
+    let host = document.querySelector("#jat-favourites");
+    if (host) return host;
 
-      if (activateOriginalStatus() || ++attempts >= 40) {
-        clearInterval(timer);
+    host = document.createElement("section");
+    host.id = "jat-favourites";
+    host.className = "jat-favourites";
+    host.innerHTML =
+      '<div class="jat-favourites-head"><span>★ PINNED APPLICATIONS</span><span>QUICK ACCESS</span></div>' +
+      '<div class="jat-favourites-grid" id="jat-favourites-grid"></div>';
+
+    const main = document.querySelector(
+      "main, #main-system, .main-content, .dashboard, #home"
+    ) || document.body;
+
+    const firstSection = main.querySelector(
+      ".app-grid, #app-grid, .apps-grid, .app-drawer, .home-section"
+    );
+    if (firstSection && firstSection.parentNode) {
+      firstSection.parentNode.insertBefore(host, firstSection);
+    } else {
+      main.insertBefore(host, main.firstChild);
+    }
+    return host;
+  }
+
+  function renderFavourites() {
+    const host = getFavouriteHost();
+    const grid = host.querySelector("#jat-favourites-grid");
+    if (!grid) return;
+
+    const favs = readFavs();
+    const cards = appCards();
+    const byId = new Map(cards.map(card => [appIdentity(card).id, card]));
+
+    grid.replaceChildren();
+
+    favs.forEach(id => {
+      const original = byId.get(id);
+      if (!original) return;
+
+      const info = appIdentity(original);
+      const tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = "jat-favourite-tile";
+
+      const image = original.querySelector("img");
+      if (image) {
+        const icon = document.createElement("img");
+        icon.src = image.src;
+        icon.alt = "";
+        tile.appendChild(icon);
       }
+
+      const label = document.createElement("span");
+      label.textContent = info.name || "APPLICATION";
+      tile.appendChild(label);
+
+      tile.addEventListener("click", () => {
+        const launch = original.querySelector(
+          "button:not(.jat-favourite-star), [role='button']"
+        );
+        if (launch) launch.click();
+        else original.click();
+      });
+      grid.appendChild(tile);
+    });
+
+    if (!favs.length) {
+      const empty = document.createElement("div");
+      empty.textContent = "NO PINNED APPS // SELECT ★ IN APP DRAWER";
+      empty.style.cssText = "font:10px monospace;color:#66816d;padding:8px 2px";
+      grid.appendChild(empty);
+    }
+  }
+
+  function addFavouriteControls() {
+    appCards().forEach(card => {
+      if (card.querySelector(".jat-favourite-star")) return;
+
+      const info = appIdentity(card);
+      if (!info.id) return;
+
+      card.classList.add("jat-favourite-anchor");
+
+      const star = document.createElement("button");
+      star.type = "button";
+      star.className = "jat-favourite-star";
+      star.setAttribute("aria-label", "Toggle favourite");
+      star.textContent = readFavs().includes(info.id) ? "★" : "☆";
+      star.classList.toggle("active", readFavs().includes(info.id));
+
+      star.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        const favs = readFavs();
+        const index = favs.indexOf(info.id);
+        if (index >= 0) favs.splice(index, 1);
+        else favs.push(info.id);
+
+        writeFavs(favs);
+        star.textContent = favs.includes(info.id) ? "★" : "☆";
+        star.classList.toggle("active", favs.includes(info.id));
+        renderFavourites();
+      });
+
+      card.appendChild(star);
+    });
+    renderFavourites();
+  }
+
+  // Remove only non-functional prototype wording from visible text nodes.
+  function cleanPrototypeLabels() {
+    const unwanted = [
+      /^user interface$/i,
+      /^runs locally$/i,
+      /^running locally$/i,
+      /^local interface$/i,
+      /^prototype$/i,
+      /^demo version$/i,
+      /^test interface$/i,
+      /^sample interface$/i
+    ];
+
+    const walker = document.createTreeWalker(
+      document.body, NodeFilter.SHOW_TEXT
+    );
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+
+    nodes.forEach(node => {
+      const value = (node.nodeValue || "").trim();
+      if (!value || !unwanted.some(rx => rx.test(value))) return;
+      const parent = node.parentElement;
+      if (!parent || parent.closest("button, input, textarea, select, script")) return;
+      node.nodeValue = node.nodeValue.replace(value, "");
+      if (!parent.textContent.trim()) parent.style.display = "none";
+    });
+  }
+
+  // Re-run the entrance animation only after the password gate is submitted.
+  function runSystemIgnition() {
+    const selectors = [
+      "main > *",
+      "#main-system > *",
+      ".main-content > *",
+      ".dashboard > *",
+      "#home > *"
+    ];
+    let items = [];
+    selectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => {
+        if (el.closest("#login-screen, #lock-screen, .login-screen, .lock-screen")) return;
+        if (el.id === "jat-favourites") return;
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) items.push(el);
+      });
+    });
+    items = [...new Set(items)];
+
+    if (!items.length) {
+      const main = document.querySelector(
+        "#main-system, main, .main-content, .dashboard, #home"
+      );
+      if (main) items = [...main.children].filter(el =>
+        !["SCRIPT", "STYLE"].includes(el.tagName) &&
+        el.id !== "jat-favourites"
+      );
+    }
+
+    items.forEach(el => {
+      el.classList.remove("jat-startup-visible");
+      el.classList.add("jat-startup-hidden");
+    });
+
+    // Allow the unlocked system to render before revealing each feature.
+    setTimeout(() => {
+      items.forEach((el, i) => {
+        setTimeout(() => {
+          el.classList.remove("jat-startup-hidden");
+          el.classList.add("jat-startup-visible");
+        }, i * 1150);
+      });
+    }, 350);
+  }
+
+  function initializeButton(target) {
+    const button = target.closest("button, [role='button'], input[type='button'], input[type='submit']");
+    if (!button) return false;
+    const text = (
+      button.innerText || button.value || button.getAttribute("aria-label") || ""
+    ).trim().replace(/\s+/g, " ").toLowerCase();
+    return text.includes("initialize system") || text === "initialize";
+  }
+
+  document.addEventListener("click", event => {
+    if (!initializeButton(event.target)) return;
+    setTimeout(() => {
+      runSystemIgnition();
+      setTimeout(addFavouriteControls, 500);
     }, 250);
+  }, true);
+
+  // Keep the existing terminal interface and its functions intact.
+  // Refresh app discovery/favourite controls when the app list is populated.
+  function refresh() {
+    cleanPrototypeLabels();
+    addFavouriteControls();
   }
 
   if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", begin, { once: true });
+    document.addEventListener("DOMContentLoaded", refresh, { once: true });
   } else {
-    begin();
+    refresh();
   }
+
+  const observer = new MutationObserver(() => {
+    if (window.__jatFavouriteRefreshPending) return;
+    window.__jatFavouriteRefreshPending = true;
+    requestAnimationFrame(() => {
+      window.__jatFavouriteRefreshPending = false;
+      addFavouriteControls();
+      cleanPrototypeLabels();
+    });
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
 })();

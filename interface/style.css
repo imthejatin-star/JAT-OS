@@ -288,121 +288,145 @@ body.eye-comfort .folder-window-line { background: rgba(223,195,139,.35); }
 }
 
 
-/* JAT OS - CONTROLLED SYSTEM IGNITION */
-#jat-boot-core {
-  position: fixed;
-  top: 15px;
-  left: 15px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  z-index: 2147483000;
-  pointer-events: none;
-  opacity: 0;
-  background: #e7bd7c;
-  box-shadow: 0 0 0 transparent;
+/* JAT OS HACKER REFINEMENT */
+:root {
+  --jat-hacker-bg: #090d0b;
+  --jat-hacker-panel: #0d1511;
+  --jat-hacker-panel-2: #101b15;
+  --jat-hacker-line: rgba(113, 175, 125, .19);
+  --jat-hacker-green: #9bc99d;
+  --jat-hacker-dim: #66816d;
+  --jat-hacker-amber: #c6a36b;
 }
 
-#jat-boot-core.ignited {
-  animation: jatCoreIgnition 4.5s ease-in-out forwards;
+body {
+  background-color: var(--jat-hacker-bg) !important;
+  background-image:
+    linear-gradient(rgba(99,150,105,.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(99,150,105,.025) 1px, transparent 1px) !important;
+  background-size: 27px 27px !important;
 }
 
-@keyframes jatCoreIgnition {
-  0% {
-    opacity: 0;
-    box-shadow: 0 0 0 transparent;
-    filter: brightness(.3);
-  }
-  25% {
-    opacity: .2;
-    box-shadow: 0 0 4px 1px rgba(231,189,124,.2);
-  }
-  55% {
-    opacity: .55;
-    box-shadow: 0 0 8px 2px rgba(231,189,124,.35);
-  }
-  80% {
-    opacity: .85;
-    box-shadow: 0 0 13px 3px rgba(231,189,124,.5);
-  }
-  100% {
-    opacity: 1;
-    box-shadow: 0 0 16px 4px rgba(231,189,124,.65),
-                0 0 27px 8px rgba(231,189,124,.18);
-    filter: brightness(1.15);
-  }
+.card, .panel, .folder-card, .app-card,
+section, aside, .dashboard, .main-content {
+  border-color: var(--jat-hacker-line) !important;
+  box-shadow: none !important;
 }
 
-.jat-boot-hidden {
+button, .button, .app-card, .folder-card {
+  border-radius: 5px !important;
+}
+
+button {
+  letter-spacing: .045em;
+}
+
+.jat-favourites {
+  margin: 16px 0 22px;
+  padding: 13px;
+  border: 1px solid var(--jat-hacker-line);
+  border-left: 2px solid var(--jat-hacker-green);
+  background: rgba(8,17,11,.78);
+}
+
+.jat-favourites-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  color: var(--jat-hacker-green);
+  font: 600 11px/1.4 monospace;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+}
+
+.jat-favourites-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(76px, 1fr));
+  gap: 9px;
+}
+
+.jat-favourite-tile {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 5px;
+  color: var(--jat-hacker-green);
+  background: rgba(110,170,120,.045);
+  border: 1px solid var(--jat-hacker-line);
+  border-radius: 4px;
+  font: 11px monospace;
+  overflow: hidden;
+}
+
+.jat-favourite-tile img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+}
+
+.jat-favourite-tile span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.jat-favourite-star {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  z-index: 8;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--jat-hacker-line);
+  border-radius: 3px !important;
+  background: #0b130e;
+  color: #6d8871;
+  font-size: 17px;
+  line-height: 1;
+}
+
+.jat-favourite-star.active {
+  color: #d1b16e;
+  border-color: rgba(209,177,110,.5);
+  text-shadow: 0 0 9px rgba(209,177,110,.4);
+}
+
+.jat-favourite-anchor {
+  position: relative;
+}
+
+.jat-startup-hidden {
   opacity: 0 !important;
-  transform: translateY(8px);
-  filter: brightness(.55) blur(1.5px);
-  pointer-events: none;
+  transform: translateY(7px);
+  filter: brightness(.5) blur(1.5px);
 }
 
-.jat-boot-reveal {
+.jat-startup-visible {
   opacity: 1 !important;
   transform: translateY(0);
   filter: brightness(1) blur(0);
-  transition:
-    opacity 1.1s ease,
-    transform 1.1s ease,
-    filter 1.1s ease;
+  transition: opacity 1.15s ease, transform 1.15s ease, filter 1.15s ease;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  #jat-boot-core.ignited {
-    animation-duration: .2s;
-  }
-  .jat-boot-reveal {
-    transition-duration: .2s;
-  }
+.jat-system-stream {
+  color: var(--jat-hacker-dim);
+  font: 10px/1.65 monospace;
+  letter-spacing: .06em;
+  overflow: hidden;
 }
 
-
-/* JAT OS ORIGINAL STATUS LIGHT UPGRADE */
-
-/* Remove the extra artificial dot introduced by the previous boot animation. */
-#jat-boot-core {
-  display: none !important;
+.jat-system-stream-line {
+  opacity: .75;
+  animation: jatStreamIn .65s ease both;
 }
 
-/* Animate the actual status indicator beside the ONLINE label. */
-.jat-original-status-light {
-  opacity: .12 !important;
-  background: #d8a96d !important;
-  box-shadow: none !important;
-  animation: jatOriginalLightIgnition 5.5s ease-in-out forwards !important;
-}
-
-@keyframes jatOriginalLightIgnition {
-  0% {
-    opacity: .08;
-    box-shadow: 0 0 0 transparent;
-    filter: brightness(.4);
-  }
-  30% {
-    opacity: .25;
-    box-shadow: 0 0 4px 1px rgba(216,169,109,.18);
-  }
-  65% {
-    opacity: .65;
-    box-shadow: 0 0 9px 3px rgba(216,169,109,.38);
-  }
-  100% {
-    opacity: 1;
-    box-shadow: 0 0 12px 3px rgba(216,169,109,.65),
-                0 0 22px 6px rgba(216,169,109,.2);
-    filter: brightness(1.2);
-  }
-}
-
-.jat-original-status-text {
-  animation: jatStatusTextIgnition 3.5s ease forwards !important;
-}
-
-@keyframes jatStatusTextIgnition {
-  0% { opacity: .12; filter: blur(2px); }
-  45% { opacity: .45; filter: blur(1px); }
-  100% { opacity: 1; filter: blur(0); }
+@keyframes jatStreamIn {
+  from { opacity: 0; transform: translateX(-5px); }
+  to { opacity: .75; transform: translateX(0); }
 }
