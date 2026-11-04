@@ -358,3 +358,51 @@ body.eye-comfort .folder-window-line { background: rgba(223,195,139,.35); }
     transition-duration: .2s;
   }
 }
+
+
+/* JAT OS ORIGINAL STATUS LIGHT UPGRADE */
+
+/* Remove the extra artificial dot introduced by the previous boot animation. */
+#jat-boot-core {
+  display: none !important;
+}
+
+/* Animate the actual status indicator beside the ONLINE label. */
+.jat-original-status-light {
+  opacity: .12 !important;
+  background: #d8a96d !important;
+  box-shadow: none !important;
+  animation: jatOriginalLightIgnition 5.5s ease-in-out forwards !important;
+}
+
+@keyframes jatOriginalLightIgnition {
+  0% {
+    opacity: .08;
+    box-shadow: 0 0 0 transparent;
+    filter: brightness(.4);
+  }
+  30% {
+    opacity: .25;
+    box-shadow: 0 0 4px 1px rgba(216,169,109,.18);
+  }
+  65% {
+    opacity: .65;
+    box-shadow: 0 0 9px 3px rgba(216,169,109,.38);
+  }
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 12px 3px rgba(216,169,109,.65),
+                0 0 22px 6px rgba(216,169,109,.2);
+    filter: brightness(1.2);
+  }
+}
+
+.jat-original-status-text {
+  animation: jatStatusTextIgnition 3.5s ease forwards !important;
+}
+
+@keyframes jatStatusTextIgnition {
+  0% { opacity: .12; filter: blur(2px); }
+  45% { opacity: .45; filter: blur(1px); }
+  100% { opacity: 1; filter: blur(0); }
+}

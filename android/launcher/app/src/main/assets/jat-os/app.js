@@ -640,3 +640,79 @@ document.addEventListener("DOMContentLoaded", () => {
     }, { once: true });
   }
 })();
+
+
+/* JAT OS ORIGINAL STATUS LIGHT UPGRADE */
+(() => {
+  function activateOriginalStatus() {
+    // Remove the duplicate light, including any delayed insertion.
+    document.querySelectorAll("#jat-boot-core").forEach(el => el.remove());
+
+    const all = Array.from(document.querySelectorAll("body *"));
+
+    // Find the smallest element whose complete text is the status label.
+    const status = all.find(el => {
+      if (el.children.length > 0) return false;
+      const value = (el.textContent || "").trim().toUpperCase();
+      return value === "ONLINE" || value === "OFFLINE";
+    });
+
+    if (!status || status.dataset.jatStatusAnimated === "yes") return false;
+
+    status.dataset.jatStatusAnimated = "yes";
+
+    // Locate the existing light immediately before the status label.
+    const parent = status.parentElement;
+    let light = status.previousElementSibling;
+
+    if (!light && parent) {
+      light = Array.from(parent.children).find(el =>
+        el !== status &&
+        el.getBoundingClientRect().width <= 24 &&
+        el.getBoundingClientRect().height <= 24
+      );
+    }
+
+    // If the dot is nested inside the same status container, locate it there.
+    if (!light && parent) {
+      light = parent.querySelector(
+        ".status-dot, .status-light, .indicator, .dot, i, span"
+      );
+      if (light === status) light = null;
+    }
+
+    if (light) {
+      light.classList.add("jat-original-status-light");
+    }
+
+    // Animate the actual label without changing its surrounding layout.
+    status.textContent = "OFFLINE";
+    status.classList.add("jat-original-status-text");
+
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        status.textContent = "ONLINE";
+      }, 3500);
+    });
+
+    return true;
+  }
+
+  function begin() {
+    // Retry briefly in case the launcher status is created after page load.
+    let attempts = 0;
+    const timer = setInterval(() => {
+      document.querySelectorAll("#jat-boot-core").forEach(el => el.remove());
+
+      if (activateOriginalStatus() || ++attempts >= 40) {
+        clearInterval(timer);
+      }
+    }, 250);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", begin, { once: true });
+  } else {
+    begin();
+  }
+})();
