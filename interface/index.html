@@ -48,6 +48,16 @@
             </div>
             <div id="favourites" class="app-grid favourite-grid"></div>
 
+
+            <div class="section-heading folder-section-heading">
+                <div>
+                    <span class="eyebrow">PRIVATE DIRECTORY</span>
+                    <h2>My folders</h2>
+                </div>
+                <button class="text-button" onclick="showScreen('customizeScreen')">MANAGE ↗</button>
+            </div>
+            <div id="homeFolders" class="folder-grid"></div>
+
             <div class="section-heading lower-heading">
                 <div>
                     <span class="eyebrow">SYSTEM</span>
@@ -141,6 +151,7 @@
                     <div><strong>Interface theme</strong><small>Visual appearance</small></div>
                     <select id="themeMode" onchange="saveAppearance()">
                         <option value="dark">Dark</option>
+                        <option value="eye">Eye comfort / warm</option>
                         <option value="midnight">Midnight green</option>
                     </select>
                 </div>
@@ -148,6 +159,34 @@
                     <div><strong>Background animation</strong><small>Animated ambient particles</small></div>
                     <label class="switch"><input id="animations" type="checkbox" checked onchange="saveAppearance()"><span></span></label>
                 </div>
+            </div>
+
+            <div class="folder-manager">
+                <div class="folder-manager-heading">
+                    <div class="eyebrow">DIRECTORY CONTROL / 05</div>
+                    <h2>Private folders</h2>
+                    <p>Create your own app directories and decide which applications belong in each one.</p>
+                </div>
+
+                <div class="folder-create">
+                    <input id="newFolderName" type="text" maxlength="24"
+                           placeholder="Enter folder name..." autocomplete="off">
+                    <button onclick="createFolder()">CREATE</button>
+                </div>
+
+                <div class="folder-assignment">
+                    <label for="folderTarget">SELECT DIRECTORY</label>
+                    <select id="folderTarget" onchange="renderFolderAssignments()">
+                        <option value="">Choose a folder</option>
+                    </select>
+                    <div id="folderAppAssignments" class="assignment-list">
+                        <div class="assignment-empty">Create a folder to begin.</div>
+                    </div>
+                    <button class="outline-button full-button" onclick="saveFolderAssignments()">SAVE DIRECTORY CONTENTS</button>
+                </div>
+
+                <div class="eyebrow folder-list-label">EXISTING DIRECTORIES</div>
+                <div id="managedFolders" class="managed-folders"></div>
             </div>
             <button class="outline-button full-button" onclick="resetAppearance()">RESET APPEARANCE</button>
         </section>
@@ -177,6 +216,24 @@
             <span>⌁</span><small>NOTES</small>
         </button>
     </nav>
+</div>
+
+
+<div id="folderModal" class="folder-modal" onclick="if(event.target===this)closeFolder()">
+    <div class="folder-window">
+        <div class="folder-window-top">
+            <div>
+                <div class="folder-terminal-label">JAT FILE SYSTEM // PRIVATE DIRECTORY</div>
+                <h2 id="folderModalTitle">DIRECTORY</h2>
+            </div>
+            <button class="folder-close" onclick="closeFolder()">×</button>
+        </div>
+        <div class="folder-path"><span>ROOT</span> / <span id="folderPathName">DIRECTORY</span> / ACCESS GRANTED</div>
+        <div class="folder-window-line"></div>
+        <div id="folderModalApps" class="app-grid folder-modal-grid"></div>
+        <div id="folderModalEmpty" class="folder-empty" hidden>THIS DIRECTORY IS EMPTY</div>
+        <div class="folder-window-footer">LOCAL STORAGE // ENCRYPTED-STYLE INTERFACE</div>
+    </div>
 </div>
 
 <div id="toast" class="toast"></div>
