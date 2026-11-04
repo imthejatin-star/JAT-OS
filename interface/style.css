@@ -286,3 +286,73 @@ body.eye-comfort .folder-window-line { background: rgba(223,195,139,.35); }
 @media (max-width: 380px) {
     .folder-modal-grid { grid-template-columns: repeat(3, minmax(0,1fr)); }
 }
+
+
+/* JAT OS SEQUENTIAL SYSTEM BOOT */
+body.jat-boot-sequence {
+  position: relative;
+}
+
+body.jat-boot-sequence::before {
+  content: "";
+  position: fixed;
+  top: 15px;
+  left: 15px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99999;
+  opacity: 0;
+  background: #e6bd79;
+  box-shadow: 0 0 0 rgba(230,189,121,0);
+  animation: jatCoreIgnition 4.5s ease-in-out forwards;
+}
+
+@keyframes jatCoreIgnition {
+  0% {
+    opacity: 0;
+    box-shadow: 0 0 0 rgba(230,189,121,0);
+    filter: brightness(.3);
+  }
+  35% {
+    opacity: .35;
+    box-shadow: 0 0 5px 1px rgba(230,189,121,.18);
+  }
+  70% {
+    opacity: .8;
+    box-shadow: 0 0 11px 3px rgba(230,189,121,.42);
+  }
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 15px 4px rgba(230,189,121,.58),
+                0 0 28px 8px rgba(230,189,121,.16);
+    filter: brightness(1.15);
+  }
+}
+
+.jat-boot-item {
+  opacity: 0 !important;
+  transform: translateY(9px);
+  filter: brightness(.45) blur(2px);
+  transition:
+    opacity 1.05s ease,
+    transform 1.05s ease,
+    filter 1.05s ease;
+  will-change: opacity, transform, filter;
+}
+
+.jat-boot-item.jat-boot-visible {
+  opacity: 1 !important;
+  transform: translateY(0);
+  filter: brightness(1) blur(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.jat-boot-sequence::before {
+    animation-duration: .2s;
+  }
+  .jat-boot-item {
+    transition-duration: .2s;
+  }
+}

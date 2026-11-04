@@ -545,3 +545,92 @@ document.addEventListener("DOMContentLoaded", () => {
         if (event.key === "Escape") closeFolder();
     });
 });
+
+
+/* JAT OS SEQUENTIAL SYSTEM BOOT SCRIPT */
+(() => {
+  const boot = () => {
+    if (document.body.dataset.jatBootStarted === "yes") return;
+    document.body.dataset.jatBootStarted = "yes";
+    document.body.classList.add("jat-boot-sequence");
+
+    const selectors = [
+      "header",
+      ".topbar",
+      ".header",
+      ".navbar",
+      "nav",
+      ".sidebar",
+      ".toolbar",
+      ".status-bar",
+      ".hero",
+      ".dashboard",
+      ".main-content",
+      "main",
+      "section",
+      ".home-section",
+      ".panel",
+      ".card",
+      ".folder-card",
+      ".app-card",
+      ".app-grid",
+      ".dock",
+      ".customize-section",
+      ".settings-panel",
+      "footer"
+    ];
+
+    const candidates = [];
+    const seen = new Set();
+
+    selectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => {
+        if (seen.has(el)) return;
+        if (el.closest("script, style, template")) return;
+        if (el.getBoundingClientRect().width === 0 ||
+            el.getBoundingClientRect().height === 0) return;
+        seen.add(el);
+        candidates.push(el);
+      });
+    });
+
+    candidates.sort((a, b) => {
+      if (a === b) return 0;
+      const relation = a.compareDocumentPosition(b);
+      return relation & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+    });
+
+    // Avoid hiding a whole section and then hiding every child inside it.
+    const selected = candidates.filter(el => {
+      return !candidates.some(parent =>
+        parent !== el &&
+        parent.contains(el) &&
+        (
+          parent.matches("main, section, header, nav, .dashboard, .main-content, .home-section") &&
+          !el.matches(".card, .panel, .folder-card, .app-card")
+        )
+      );
+    });
+
+    // Reveal meaningful interface elements in document order.
+    selected.forEach((el, index) => {
+      el.classList.add("jat-boot-item");
+      const delay = 500 + index * 1100;
+      window.setTimeout(() => {
+        el.classList.add("jat-boot-visible");
+      }, delay);
+    });
+
+    // Reveal anything not covered by the feature selectors after the initial sequence.
+    window.setTimeout(() => {
+      document.querySelectorAll(".jat-boot-item:not(.jat-boot-visible)")
+        .forEach(el => el.classList.add("jat-boot-visible"));
+    }, 500 + selected.length * 1100 + 1200);
+  };
+
+  if (document.readyState === "complete") {
+    window.setTimeout(boot, 250);
+  } else {
+    window.addEventListener("load", () => window.setTimeout(boot, 250), { once: true });
+  }
+})();
