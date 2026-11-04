@@ -3,183 +3,114 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="theme-color" content="#080b12">
+<meta name="theme-color" content="#030706">
 <title>JAT OS</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<canvas id="matrix"></canvas>
+<div class="scanline"></div>
+<div class="app-shell">
 
-<div class="ambient"></div>
-
-<header>
+<header class="topbar">
   <div class="brand">
-    <div class="logo">J<span>.</span></div>
-    <div>
-      <div class="brand-name">JAT OS</div>
-      <div class="brand-sub">PERSONAL ENVIRONMENT</div>
-    </div>
+    <div class="brand-mark">J</div>
+    <div><strong>JAT OS</strong><small>PERSONAL ENVIRONMENT</small></div>
   </div>
-  <div class="system-status">
-    <span class="status-dot"></span>
-    <span>ONLINE</span>
-  </div>
+  <div class="top-status"><span class="pulse"></span> LOCAL SYSTEM <span class="version">V0.3</span></div>
 </header>
 
 <main>
-  <section id="home" class="screen active">
-    <div class="greeting">
-      <div class="eyebrow">YOUR PERSONAL SPACE</div>
-      <div id="date" class="date"></div>
-      <div id="clock" class="clock">00:00</div>
-      <div class="welcome">Welcome back.</div>
+<section class="screen active" id="home">
+  <div class="hero">
+    <div class="eyebrow"><span class="pulse"></span> SYSTEM ONLINE / ENCRYPTED SESSION</div>
+    <div class="hero-time" id="clock">00:00</div>
+    <div class="hero-date" id="date">LOADING DATE...</div>
+    <div class="hero-line"></div>
+    <div class="hero-message">YOUR SPACE. YOUR SYSTEM.</div>
+    <div class="hero-sub">Everything you need. Nothing you don't.</div>
+  </div>
+
+  <div class="section-head"><div><span class="section-index">01</span> SYSTEM OVERVIEW</div><span class="live-label">LIVE</span></div>
+  <div class="stats-grid">
+    <div class="stat-card"><span class="stat-label">SESSION</span><strong id="sessionTime">00:00:00</strong><small>LOCAL UPTIME</small></div>
+    <div class="stat-card"><span class="stat-label">INTERFACE</span><strong class="green">ACTIVE</strong><small>ALL SYSTEMS READY</small></div>
+    <div class="stat-card"><span class="stat-label">STORAGE</span><strong>LOCAL</strong><small>DEVICE PERSISTENCE</small></div>
+  </div>
+
+  <div class="section-head"><div><span class="section-index">02</span> QUICK ACCESS</div><span class="muted">SELECT MODULE</span></div>
+  <div class="quick-grid">
+    <button class="module-card" data-open="notes"><span class="module-icon">N_</span><strong>NOTES</strong><small>Capture thoughts</small><span class="card-arrow">↗</span></button>
+    <button class="module-card" data-open="apps"><span class="module-icon">A_</span><strong>APPLICATIONS</strong><small>Explore modules</small><span class="card-arrow">↗</span></button>
+    <button class="module-card" data-open="system"><span class="module-icon">S_</span><strong>SYSTEM</strong><small>Preferences</small><span class="card-arrow">↗</span></button>
+    <button class="module-card" data-open="terminal"><span class="module-icon">$_</span><strong>TERMINAL</strong><small>Local console</small><span class="card-arrow">↗</span></button>
+  </div>
+
+  <div class="section-head"><div><span class="section-index">03</span> ACTIVITY STREAM</div><span class="live-label">RUNNING</span></div>
+  <div class="activity-panel" id="activity">
+    <div class="activity-row"><span class="activity-dot"></span><span>JAT OS interface initialized</span><time>NOW</time></div>
+    <div class="activity-row"><span class="activity-dot"></span><span>Local storage available</span><time>READY</time></div>
+    <div class="activity-row"><span class="activity-dot"></span><span>Personal environment active</span><time>READY</time></div>
+  </div>
+</section>
+
+<section class="screen" id="apps">
+  <div class="page-heading"><span class="eyebrow">MODULE DIRECTORY / 02</span><h1>Applications<span class="green">.</span></h1><p>Your tools, organized in one place.</p></div>
+  <div class="search-wrap"><span>⌕</span><input id="appSearch" placeholder="Search modules..." autocomplete="off"></div>
+  <div class="app-grid" id="appGrid">
+    <button class="app-tile" data-open="notes" data-name="notes"><span>N_</span><strong>Notes</strong><small>Personal workspace</small></button>
+    <button class="app-tile" data-open="terminal" data-name="terminal"><span>$_</span><strong>Terminal</strong><small>Local command log</small></button>
+    <button class="app-tile" data-open="system" data-name="system"><span>S_</span><strong>System</strong><small>Preferences</small></button>
+    <button class="app-tile" data-open="home" data-name="dashboard"><span>H_</span><strong>Dashboard</strong><small>System overview</small></button>
+  </div>
+  <p class="empty-state" id="noApps" hidden>No matching modules found.</p>
+</section>
+
+<section class="screen" id="notes">
+  <div class="page-heading"><span class="eyebrow">PERSONAL STORAGE / 03</span><h1>Notes<span class="green">.</span></h1><p>A private space for your thoughts and ideas.</p></div>
+  <div class="editor-panel">
+    <div class="editor-top"><span>UNTITLED DOCUMENT</span><span id="saveStatus">LOCAL DRAFT</span></div>
+    <textarea id="notesArea" placeholder="Start writing something..."></textarea>
+    <div class="editor-bottom"><span id="charCount">0 CHARACTERS</span><button class="action-button" id="saveNote">SAVE LOCALLY ↗</button></div>
+  </div>
+  <div class="info-strip"><span class="pulse"></span> Your notes are stored on this device in this app's local storage.</div>
+</section>
+
+<section class="screen" id="terminal">
+  <div class="page-heading"><span class="eyebrow">LOCAL CONSOLE / 04</span><h1>Terminal<span class="green">.</span></h1><p>A visual console for your JAT OS session.</p></div>
+  <div class="terminal-window">
+    <div class="terminal-bar"><span></span><span></span><span></span><b>JAT // LOCAL CONSOLE</b></div>
+    <div class="terminal-content" id="terminalOutput">
+      <p class="dim">JAT OS LOCAL CONSOLE [SIMULATED INTERFACE]</p>
+      <p class="green-text">Session initialized.</p>
+      <p>Type <b>help</b> to view available interface commands.</p>
     </div>
+    <form id="terminalForm"><label>JAT <span>›</span></label><input id="terminalInput" autocomplete="off" spellcheck="false" placeholder="Type help..."></form>
+  </div>
+  <p class="warning-note">This is a local visual console, not an Android shell. It does not execute device commands.</p>
+</section>
 
-    <div class="section-heading">
-      <span>OVERVIEW</span>
-      <span class="muted">SYSTEM 01</span>
-    </div>
-
-    <div class="system-card">
-      <div class="card-top">
-        <span>JAT OS ENVIRONMENT</span>
-        <span class="live">ACTIVE</span>
-      </div>
-      <div class="system-title">Everything<br>in one place.</div>
-      <div class="system-description">
-        Your personal computing environment is ready.
-      </div>
-      <div class="card-bottom">
-        <span>ANDROID 14</span>
-        <span>BUILD 001</span>
-      </div>
-    </div>
-
-    <div class="section-heading">
-      <span>QUICK ACCESS</span>
-      <span class="muted">APPLICATIONS</span>
-    </div>
-
-    <div class="quick-grid">
-      <button class="quick-item" data-app="Files">
-        <span class="app-icon">◫</span>
-        <span>Files</span>
-      </button>
-      <button class="quick-item" data-app="Notes">
-        <span class="app-icon">▤</span>
-        <span>Notes</span>
-      </button>
-      <button class="quick-item" data-app="Browser">
-        <span class="app-icon">◎</span>
-        <span>Browser</span>
-      </button>
-      <button class="quick-item" data-app="Settings">
-        <span class="app-icon">⚙</span>
-        <span>Settings</span>
-      </button>
-    </div>
-
-    <div class="section-heading">
-      <span>DEVELOPMENT STATUS</span>
-      <span class="muted">PROJECT</span>
-    </div>
-
-    <div class="info-card">
-      <div class="info-row">
-        <span>Project</span>
-        <strong>JAT OS</strong>
-      </div>
-      <div class="info-row">
-        <span>Device</span>
-        <strong>Galaxy Tab A7 Lite</strong>
-      </div>
-      <div class="info-row">
-        <span>Development</span>
-        <strong class="accent">In progress</strong>
-      </div>
-    </div>
-  </section>
-
-  <section id="apps" class="screen">
-    <div class="page-title">Applications</div>
-    <div class="page-subtitle">YOUR DIGITAL WORKSPACE</div>
-
-    <input id="search" class="search" placeholder="Search applications..." autocomplete="off">
-
-    <div id="app-list" class="app-list">
-      <button class="app-entry" data-app="Files"><span>◫</span><div><b>Files</b><small>File management</small></div></button>
-      <button class="app-entry" data-app="Notes"><span>▤</span><div><b>Notes</b><small>Personal workspace</small></div></button>
-      <button class="app-entry" data-app="Browser"><span>◎</span><div><b>Browser</b><small>Internet access</small></div></button>
-      <button class="app-entry" data-app="Calculator"><span>⊞</span><div><b>Calculator</b><small>Calculations</small></div></button>
-      <button class="app-entry" data-app="Settings"><span>⚙</span><div><b>Settings</b><small>Environment configuration</small></div></button>
-      <button class="app-entry" data-app="Terminal"><span>⌘</span><div><b>Terminal</b><small>Development environment</small></div></button>
-    </div>
-  </section>
-
-  <section id="settings" class="screen">
-    <div class="page-title">Settings</div>
-    <div class="page-subtitle">ENVIRONMENT CONFIGURATION</div>
-
-    <div class="settings-group">
-      <div class="settings-label">APPEARANCE</div>
-      <div class="setting">
-        <div><b>Light interface</b><small>Change the environment theme</small></div>
-        <button id="theme-toggle" class="toggle">OFF</button>
-      </div>
-    </div>
-
-    <div class="settings-group">
-      <div class="settings-label">DEVICE INFORMATION</div>
-      <div class="info-row"><span>Device</span><strong>SM-T225</strong></div>
-      <div class="info-row"><span>Android</span><strong>14</strong></div>
-      <div class="info-row"><span>Architecture</span><strong>ARM64</strong></div>
-      <div class="info-row"><span>Interface version</span><strong>0.1.0</strong></div>
-    </div>
-
-    <div class="settings-group">
-      <div class="settings-label">ABOUT</div>
-      <div class="system-card compact">
-        <div class="system-title">JAT OS</div>
-        <div class="system-description">A personal Android computing environment, developed independently.</div>
-      </div>
-    </div>
-  </section>
-
-  <section id="notes" class="screen">
-    <div class="page-title">Notes</div>
-    <div class="page-subtitle">PERSONAL WORKSPACE</div>
-    <textarea id="notes-input" placeholder="Write something..."></textarea>
-    <div class="note-footer">
-      <span id="save-status">Saved locally</span>
-      <button id="clear-notes">CLEAR</button>
-    </div>
-  </section>
-
-  <section id="detail" class="screen">
-    <button id="back-button" class="back">← BACK</button>
-    <div class="page-title" id="detail-title">Application</div>
-    <div class="page-subtitle">APPLICATION INFORMATION</div>
-    <div class="system-card">
-      <div class="system-title" id="detail-name"></div>
-      <div class="system-description" id="detail-description"></div>
-    </div>
-    <div id="detail-action"></div>
-  </section>
+<section class="screen" id="system">
+  <div class="page-heading"><span class="eyebrow">CONFIGURATION / 05</span><h1>System<span class="green">.</span></h1><p>Personalize your environment.</p></div>
+  <div class="settings-list">
+    <div class="setting-row"><div><strong>Visual theme</strong><small>Choose interface appearance</small></div><button class="action-button" id="themeToggle">TOGGLE THEME</button></div>
+    <div class="setting-row"><div><strong>Ambient animation</strong><small>Animated matrix background</small></div><label class="switch"><input type="checkbox" id="animationToggle" checked><span></span></label></div>
+    <div class="setting-row"><div><strong>Clock format</strong><small>Choose time display</small></div><button class="action-button" id="clockToggle">12 / 24 HOUR</button></div>
+    <div class="setting-row"><div><strong>Interface version</strong><small>JAT OS visual environment</small></div><span class="setting-value">0.3.0</span></div>
+    <div class="setting-row"><div><strong>Storage mode</strong><small>Browser local storage</small></div><span class="setting-value green">LOCAL</span></div>
+  </div>
+  <div class="danger-panel"><strong>LOCAL DATA</strong><p>Clear saved notes and interface preferences from this app.</p><button class="action-button danger" id="clearData">CLEAR LOCAL DATA</button></div>
+</section>
 </main>
 
-<nav>
-  <button class="nav-item active" data-screen="home">
-    <span>⌂</span><small>Home</small>
-  </button>
-  <button class="nav-item" data-screen="apps">
-    <span>▦</span><small>Apps</small>
-  </button>
-  <button class="nav-item" data-screen="settings">
-    <span>⚙</span><small>Settings</small>
-  </button>
+<nav class="bottom-nav">
+  <button class="nav-item active" data-screen="home"><span>⌂</span><small>HOME</small></button>
+  <button class="nav-item" data-screen="apps"><span>▦</span><small>APPS</small></button>
+  <button class="nav-item" data-screen="notes"><span>▤</span><small>NOTES</small></button>
+  <button class="nav-item" data-screen="system"><span>⚙</span><small>SYSTEM</small></button>
 </nav>
-
-<div id="toast"></div>
-
+<div class="toast" id="toast"></div>
+</div>
 <script src="app.js"></script>
 </body>
 </html>

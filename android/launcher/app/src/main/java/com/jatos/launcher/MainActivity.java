@@ -6,75 +6,59 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.BroadcastReceiver;
-import android.graphics.Color;
-import android.graphics.Typeface;
+import android.graphics.*;
 import android.graphics.drawable.GradientDrawable;
-import android.view.Gravity;
-import android.view.KeyEvent;
-import android.view.View;
-import android.view.WindowManager;
-import android.webkit.WebView;
-import android.webkit.WebViewClient;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.LinearLayout;
-import android.widget.TextView;
-import android.widget.Toast;
-import android.text.InputType;
-
+import android.view.*;
+import android.view.inputmethod.InputMethodManager;
 import android.content.SharedPreferences;
+import android.widget.*;
+import android.text.InputType;
+import android.util.Base64;
 import android.util.TypedValue;
 
 import java.security.SecureRandom;
 import java.security.MessageDigest;
-import java.util.Arrays;
-import android.util.Base64;
-
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
+import java.util.Random;
 
 public class MainActivity extends Activity {
 
-    private static final String PREFS = "jat_security";
-    private static final String SALT = "password_salt";
-    private static final String HASH = "password_hash";
-
-    private final int BG = Color.rgb(5, 5, 5);
-    private final int GREEN = Color.rgb(0, 229, 138);
-    private final int MUTED = Color.rgb(115, 125, 120);
+    private final int BG = Color.rgb(3, 7, 6);
+    private final int GREEN = Color.rgb(0, 255, 145);
+    private final int MUTED = Color.rgb(105, 145, 125);
 
     private boolean unlocked = false;
     private boolean confirming = false;
     private String firstPassword = null;
 
-    private LinearLayout root;
+    private LinearLayout content;
     private EditText passwordInput;
     private TextView message;
     private BroadcastReceiver screenReceiver;
 
-    private int dp(float value) {
-        return (int) (value * getResources().getDisplayMetrics().density);
+    private int dp(float v) {
+        return (int)(v * getResources().getDisplayMetrics().density);
     }
 
     @Override
     public void onCreate(Bundle state) {
         super.onCreate(state);
-        applyImmersiveMode();
+        applyImmersive();
         registerScreenReceiver();
         showGate();
     }
 
-    private void applyImmersiveMode() {
+    private void applyImmersive() {
         getWindow().setStatusBarColor(BG);
         getWindow().setNavigationBarColor(BG);
-
         getWindow().getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_FULLSCREEN |
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
             View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
-            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
-            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
         );
     }
 
@@ -102,143 +86,168 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        applyImmersiveMode();
+        applyImmersive();
         if (!unlocked) showGate();
     }
 
-    private TextView makeText(String value, int size, int color) {
-        TextView text = new TextView(this);
-        text.setText(value);
-        text.setTextColor(color);
-        text.setTextSize(TypedValue.COMPLEX_UNIT_SP, size);
-        text.setTypeface(Typeface.MONOSPACE);
-        text.setGravity(Gravity.CENTER);
-        return text;
+    private GradientDrawable shape(int color, int stroke, int radius) {
+        GradientDrawable d = new GradientDrawable();
+        d.setColor(color);
+        d.setCornerRadius(dp(radius));
+        if (stroke != 0) d.setStroke(dp(1), stroke);
+        return d;
+    }
+
+    private TextView text(String value, int size, int color, boolean bold) {
+        TextView t = new TextView(this);
+        t.setText(value);
+        t.setTextColor(color);
+        t.setTextSize(TypedValue.COMPLEX_UNIT_SP, size);
+        t.setTypeface(Typeface.MONOSPACE, bold ? Typeface.BOLD : Typeface.NORMAL);
+        t.setGravity(Gravity.CENTER);
+        return t;
+    }
+
+    private void addSpace(LinearLayout parent, int height) {
+        parent.addView(new View(this), new LinearLayout.LayoutParams(1, dp(height)));
     }
 
     private void showGate() {
         if (isFinishing()) return;
 
-        root = new LinearLayout(this);
-        root.setOrientation(LinearLayout.VERTICAL);
-        root.setGravity(Gravity.CENTER);
-        root.setBackgroundColor(BG);
-        root.setPadding(dp(28), dp(24), dp(28), dp(24));
+        FrameLayout frame = new FrameLayout(this);
+        frame.setBackgroundColor(BG);
+        frame.addView(new MatrixBackground(this),
+            new FrameLayout.LayoutParams(-1, -1));
 
-        TextView system = makeText("JAT OS  //  PRIVATE SYSTEM", 11, GREEN);
-        root.addView(system, new LinearLayout.LayoutParams(-1, dp(35)));
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setClipToPadding(false);
 
-        TextView title = makeText("JAT OS", 36, Color.WHITE);
-        title.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        LinearLayout.LayoutParams titleParams =
-            new LinearLayout.LayoutParams(-1, dp(65));
-        titleParams.topMargin = dp(18);
-        root.addView(title, titleParams);
+        content = new LinearLayout(this);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setGravity(Gravity.CENTER);
+        content.setPadding(dp(26), dp(28), dp(26), dp(28));
 
-        TextView subtitle = makeText("INITIALIZING SECURE INTERFACE", 10, MUTED);
-        root.addView(subtitle, new LinearLayout.LayoutParams(-1, dp(35)));
+        scroll.addView(content);
+        frame.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
 
-        TextView animation = makeText(
-            "01001010  01000001  01010100\n" +
-            "SYSTEM // ACCESS CONTROL\n" +
-            "01010011  01011001  01010011\n" +
-            "●  ●  ●  ●  ●  ●  ●  ●",
-            12, GREEN
+        TextView top = text("JAT OS   /   PRIVATE ENVIRONMENT", 10, GREEN, true);
+        content.addView(top, new LinearLayout.LayoutParams(-1, dp(32)));
+
+        addSpace(content, 30);
+
+        TextView logo = text("JAT", 62, Color.WHITE, true);
+        content.addView(logo, new LinearLayout.LayoutParams(-1, dp(75)));
+
+        TextView os = text("OPERATING INTERFACE", 10, GREEN, true);
+        content.addView(os, new LinearLayout.LayoutParams(-1, dp(28)));
+
+        addSpace(content, 25);
+
+        LinearLayout status = new LinearLayout(this);
+        status.setGravity(Gravity.CENTER);
+        status.setPadding(dp(14), dp(10), dp(14), dp(10));
+        status.setBackground(shape(0xCC07150F, 0x8840B87B, 12));
+
+        TextView statusText = text("●  ENCRYPTED SESSION  /  LOCAL", 10, GREEN, true);
+        status.addView(statusText);
+        content.addView(status, new LinearLayout.LayoutParams(-1, dp(42)));
+
+        addSpace(content, 18);
+
+        TextView terminal = text(
+            "INITIALIZING CORE........... OK\n" +
+            "LOADING INTERFACE.......... OK\n" +
+            "VERIFYING SESSION........... READY\n" +
+            "--------------------------------",
+            10, MUTED, false
         );
-        animation.setLineSpacing(dp(8), 1f);
-        LinearLayout.LayoutParams animParams =
-            new LinearLayout.LayoutParams(-1, dp(125));
-        animParams.topMargin = dp(20);
-        root.addView(animation, animParams);
+        terminal.setLineSpacing(dp(7), 1f);
+        content.addView(terminal, new LinearLayout.LayoutParams(-1, dp(112)));
 
-        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        boolean hasPassword = prefs.contains(HASH);
+        SharedPreferences prefs = getSharedPreferences("jat_security", MODE_PRIVATE);
+        boolean hasPassword = prefs.contains("password_hash");
 
-        String heading;
-        String hint;
-        String buttonText;
+        String heading = !hasPassword
+            ? (confirming ? "CONFIRM YOUR ACCESS KEY" : "CREATE YOUR ACCESS KEY")
+            : "IDENTITY VERIFICATION";
 
-        if (!hasPassword) {
-            heading = confirming ? "CONFIRM YOUR PASSWORD" : "CREATE YOUR PASSWORD";
-            hint = confirming ? "Re-enter your password" : "Create a password";
-            buttonText = confirming ? "SAVE PASSWORD" : "CONTINUE";
-        } else {
-            heading = "IDENTITY VERIFICATION";
-            hint = "Enter your password";
-            buttonText = "UNLOCK JAT OS";
-        }
+        String hint = !hasPassword
+            ? (confirming ? "Re-enter your password" : "Create a password")
+            : "Enter your password";
 
-        TextView label = makeText(heading, 11, MUTED);
-        LinearLayout.LayoutParams labelParams =
-            new LinearLayout.LayoutParams(-1, dp(45));
-        labelParams.topMargin = dp(25);
-        root.addView(label, labelParams);
+        String buttonText = !hasPassword
+            ? (confirming ? "CONFIRM ACCESS KEY" : "CREATE ACCESS KEY")
+            : "ENTER JAT OS";
+
+        addSpace(content, 20);
+
+        TextView label = text(heading, 11, Color.WHITE, true);
+        content.addView(label, new LinearLayout.LayoutParams(-1, dp(42)));
 
         passwordInput = new EditText(this);
         passwordInput.setSingleLine(true);
+        passwordInput.setGravity(Gravity.CENTER);
         passwordInput.setTextColor(Color.WHITE);
-        passwordInput.setHintTextColor(MUTED);
+        passwordInput.setHintTextColor(0xFF789486);
         passwordInput.setHint(hint);
-        passwordInput.setTextSize(16);
+        passwordInput.setTextSize(15);
         passwordInput.setTypeface(Typeface.MONOSPACE);
+        passwordInput.setPadding(dp(12), dp(12), dp(12), dp(12));
         passwordInput.setInputType(
             InputType.TYPE_CLASS_TEXT |
             InputType.TYPE_TEXT_VARIATION_PASSWORD
         );
-        passwordInput.setGravity(Gravity.CENTER);
-        passwordInput.setPadding(dp(12), dp(14), dp(12), dp(14));
+        passwordInput.setBackground(shape(0xEE07100C, 0xFF1D7650, 10));
 
-        GradientDrawable inputBackground = new GradientDrawable();
-        inputBackground.setColor(Color.rgb(15, 18, 17));
-        inputBackground.setCornerRadius(dp(9));
-        inputBackground.setStroke(dp(1), Color.rgb(50, 65, 57));
-        passwordInput.setBackground(inputBackground);
+        content.addView(passwordInput,
+            new LinearLayout.LayoutParams(-1, dp(56)));
 
-        LinearLayout.LayoutParams inputParams =
-            new LinearLayout.LayoutParams(-1, dp(55));
-        root.addView(passwordInput, inputParams);
+        message = text("ACCESS RESTRICTED  /  WAITING FOR INPUT", 9, MUTED, false);
+        content.addView(message, new LinearLayout.LayoutParams(-1, dp(45)));
 
-        message = makeText("ACCESS RESTRICTED", 10, MUTED);
-        LinearLayout.LayoutParams msgParams =
-            new LinearLayout.LayoutParams(-1, dp(42));
-        root.addView(message, msgParams);
-
-        Button unlock = new Button(this);
-        unlock.setText(buttonText);
-        unlock.setTextColor(Color.BLACK);
-        unlock.setTextSize(12);
-        unlock.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
-        unlock.setAllCaps(false);
-        unlock.setBackgroundColor(GREEN);
+        Button enter = new Button(this);
+        enter.setText(buttonText);
+        enter.setTextColor(Color.BLACK);
+        enter.setTextSize(12);
+        enter.setTypeface(Typeface.MONOSPACE, Typeface.BOLD);
+        enter.setAllCaps(false);
+        enter.setBackground(shape(GREEN, GREEN, 10));
 
         LinearLayout.LayoutParams buttonParams =
-            new LinearLayout.LayoutParams(-1, dp(52));
-        buttonParams.topMargin = dp(10);
-        root.addView(unlock, buttonParams);
+            new LinearLayout.LayoutParams(-1, dp(54));
+        buttonParams.topMargin = dp(4);
+        content.addView(enter, buttonParams);
 
-        TextView footer = makeText("JAT OS // LOCAL AUTHENTICATION", 9, MUTED);
-        LinearLayout.LayoutParams footerParams =
-            new LinearLayout.LayoutParams(-1, dp(55));
-        footerParams.topMargin = dp(25);
-        root.addView(footer, footerParams);
+        addSpace(content, 26);
 
-        unlock.setOnClickListener(v -> handlePassword());
+        TextView footer = text(
+            "JAT OS // PERSONAL SYSTEM\nALL OPERATIONS RUN LOCALLY",
+            9, MUTED, false
+        );
+        footer.setLineSpacing(dp(5), 1f);
+        content.addView(footer, new LinearLayout.LayoutParams(-1, dp(50)));
 
-        setContentView(root);
+        enter.setOnClickListener(v -> handlePassword());
+
+        frame.setFocusableInTouchMode(true);
+        frame.requestFocus();
+        setContentView(frame);
     }
 
     private void handlePassword() {
         String entered = passwordInput.getText().toString();
 
         if (entered.length() < 6) {
-            message.setText("USE AT LEAST 6 CHARACTERS");
-            message.setTextColor(Color.rgb(255, 170, 70));
+            message.setText("ACCESS KEY MUST HAVE AT LEAST 6 CHARACTERS");
+            message.setTextColor(0xFFFFB45C);
             return;
         }
 
-        SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        SharedPreferences prefs = getSharedPreferences("jat_security", MODE_PRIVATE);
 
-        if (!prefs.contains(HASH)) {
+        if (!prefs.contains("password_hash")) {
             if (!confirming) {
                 firstPassword = entered;
                 confirming = true;
@@ -250,7 +259,8 @@ public class MainActivity extends Activity {
                 firstPassword = null;
                 confirming = false;
                 showGate();
-                message.setText("PASSWORDS DID NOT MATCH");
+                message.setText("ACCESS KEYS DO NOT MATCH");
+                message.setTextColor(0xFFFF6969);
                 return;
             }
 
@@ -265,8 +275,8 @@ public class MainActivity extends Activity {
             unlockSystem();
         } else {
             passwordInput.setText("");
-            message.setText("ACCESS DENIED // TRY AGAIN");
-            message.setTextColor(Color.rgb(255, 85, 85));
+            message.setText("ACCESS DENIED  /  INVALID KEY");
+            message.setTextColor(0xFFFF6969);
         }
     }
 
@@ -276,21 +286,20 @@ public class MainActivity extends Activity {
             new SecureRandom().nextBytes(salt);
             byte[] hash = derive(password, salt);
 
-            getSharedPreferences(PREFS, MODE_PRIVATE)
-                .edit()
-                .putString(SALT, Base64.encodeToString(salt, Base64.NO_WRAP))
-                .putString(HASH, Base64.encodeToString(hash, Base64.NO_WRAP))
+            getSharedPreferences("jat_security", MODE_PRIVATE).edit()
+                .putString("password_salt", Base64.encodeToString(salt, Base64.NO_WRAP))
+                .putString("password_hash", Base64.encodeToString(hash, Base64.NO_WRAP))
                 .apply();
         } catch (Exception e) {
-            Toast.makeText(this, "Could not save password", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, "Could not save access key", Toast.LENGTH_LONG).show();
         }
     }
 
     private boolean verifyPassword(String password) {
         try {
-            SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-            byte[] salt = Base64.decode(prefs.getString(SALT, ""), Base64.NO_WRAP);
-            byte[] expected = Base64.decode(prefs.getString(HASH, ""), Base64.NO_WRAP);
+            SharedPreferences p = getSharedPreferences("jat_security", MODE_PRIVATE);
+            byte[] salt = Base64.decode(p.getString("password_salt", ""), Base64.NO_WRAP);
+            byte[] expected = Base64.decode(p.getString("password_hash", ""), Base64.NO_WRAP);
             byte[] actual = derive(password, salt);
             return MessageDigest.isEqual(expected, actual);
         } catch (Exception e) {
@@ -299,7 +308,7 @@ public class MainActivity extends Activity {
     }
 
     private byte[] derive(String password, byte[] salt) throws Exception {
-        PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 120000, 256);
+        PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt, 180000, 256);
         try {
             return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
                 .generateSecret(spec).getEncoded();
@@ -311,31 +320,131 @@ public class MainActivity extends Activity {
     private void unlockSystem() {
         unlocked = true;
 
-        WebView webView = new WebView(this);
-        webView.setBackgroundColor(BG);
-        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
-        webView.getSettings().setJavaScriptEnabled(true);
-        webView.getSettings().setDomStorageEnabled(true);
-        webView.getSettings().setAllowFileAccess(true);
-        webView.getSettings().setAllowContentAccess(false);
-        webView.setWebViewClient(new WebViewClient());
+        android.webkit.WebView web = new android.webkit.WebView(this);
+        web.setBackgroundColor(BG);
+        web.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        web.getSettings().setJavaScriptEnabled(true);
+        web.getSettings().setDomStorageEnabled(true);
+        web.getSettings().setAllowFileAccess(true);
+        web.getSettings().setAllowContentAccess(false);
+        web.setWebViewClient(new android.webkit.WebViewClient());
 
-        setContentView(webView);
-        webView.loadUrl("file:///android_asset/jat-os/index.html");
+        setContentView(web);
+        web.loadUrl("file:///android_asset/jat-os/index.html");
     }
 
     @Override
     public void onBackPressed() {
-        // Keep JAT OS as the Home environment.
+        // JAT OS remains the Home environment.
     }
 
     @Override
     protected void onDestroy() {
         if (screenReceiver != null) {
-            try {
-                unregisterReceiver(screenReceiver);
-            } catch (Exception ignored) {}
+            try { unregisterReceiver(screenReceiver); }
+            catch (Exception ignored) {}
         }
         super.onDestroy();
+    }
+
+    // Locally rendered animated digital-rain background.
+    private class MatrixBackground extends View {
+        private final Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Random random = new Random();
+        private float[] drops;
+        private float[] speeds;
+        private int columns;
+        private float density;
+        private long frame = 0;
+        private final String chars = "01アイウエオカキクケコ0123456789ABCDEF";
+
+        MatrixBackground(Context context) {
+            super(context);
+            density = getResources().getDisplayMetrics().density;
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        }
+
+        @Override
+        protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+            columns = Math.max(1, (int)(w / (16 * density)));
+            drops = new float[columns];
+            speeds = new float[columns];
+            for (int i = 0; i < columns; i++) {
+                drops[i] = random.nextInt(Math.max(1, h / 10));
+                speeds[i] = (1.1f + random.nextFloat() * 2.5f) * density;
+            }
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+            int w = getWidth();
+            int h = getHeight();
+            canvas.drawColor(Color.rgb(3, 7, 6));
+
+            p.setStrokeWidth(1);
+            p.setColor(0x1830A875);
+            for (int x = 0; x < w; x += (int)(34 * density)) {
+                canvas.drawLine(x, 0, x, h, p);
+            }
+            for (int y = 0; y < h; y += (int)(34 * density)) {
+                canvas.drawLine(0, y, w, y, p);
+            }
+
+            p.setTypeface(Typeface.MONOSPACE);
+            p.setTextSize(11 * density);
+
+            if (drops != null) {
+                for (int i = 0; i < columns; i++) {
+                    float x = i * 16 * density;
+                    float y = drops[i] * 13 * density;
+                    for (int j = 0; j < 9; j++) {
+                        float yy = y - j * 14 * density;
+                        if (yy < 0 || yy > h) continue;
+
+                        int alpha = Math.max(8, 95 - j * 10);
+                        p.setColor(Color.argb(alpha, 0, 255, 130));
+                        if (j == 0) p.setColor(0xCCB7FFD9);
+
+                        char c = chars.charAt(random.nextInt(chars.length()));
+                        canvas.drawText(String.valueOf(c), x, yy, p);
+                    }
+
+                    drops[i] += speeds[i];
+                    if (drops[i] * 13 * density > h + random.nextInt(500)) {
+                        drops[i] = -random.nextInt(50);
+                        speeds[i] = (1.1f + random.nextFloat() * 2.5f) * density;
+                    }
+                }
+            }
+
+            // Animated scanning beam.
+            float scan = (frame * 3 * density) % (h + 100 * density);
+            p.setShader(new LinearGradient(
+                0, scan - 30 * density, 0, scan + 30 * density,
+                0x0000FF88, 0x2230FF99, Shader.TileMode.CLAMP
+            ));
+            canvas.drawRect(0, scan - 30 * density, w, scan + 30 * density, p);
+            p.setShader(null);
+
+            // Subtle corner indicators.
+            p.setColor(0x6630FF99);
+            p.setStyle(Paint.Style.STROKE);
+            p.setStrokeWidth(1.2f * density);
+            float m = 15 * density;
+            float l = 28 * density;
+            canvas.drawLine(m, m, m + l, m, p);
+            canvas.drawLine(m, m, m, m + l, p);
+            canvas.drawLine(w - m, m, w - m - l, m, p);
+            canvas.drawLine(w - m, m, w - m, m + l, p);
+            canvas.drawLine(m, h - m, m + l, h - m, p);
+            canvas.drawLine(m, h - m, m, h - m - l, p);
+            canvas.drawLine(w - m, h - m, w - m - l, h - m, p);
+            canvas.drawLine(w - m, h - m, w - m, h - m - l, p);
+            p.setStyle(Paint.Style.FILL);
+
+            frame++;
+            postInvalidateDelayed(34);
+        }
     }
 }
