@@ -547,90 +547,96 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 
-/* JAT OS SEQUENTIAL SYSTEM BOOT SCRIPT */
+/* JAT OS - CONTROLLED SEQUENTIAL STARTUP */
 (() => {
-  const boot = () => {
-    if (document.body.dataset.jatBootStarted === "yes") return;
-    document.body.dataset.jatBootStarted = "yes";
-    document.body.classList.add("jat-boot-sequence");
+  function startJatSystemBoot() {
+    if (window.__jatSystemBootStarted) return;
+    window.__jatSystemBootStarted = true;
 
-    const selectors = [
-      "header",
-      ".topbar",
-      ".header",
-      ".navbar",
-      "nav",
-      ".sidebar",
-      ".toolbar",
-      ".status-bar",
-      ".hero",
-      ".dashboard",
-      ".main-content",
-      "main",
-      "section",
-      ".home-section",
-      ".panel",
-      ".card",
-      ".folder-card",
-      ".app-card",
-      ".app-grid",
-      ".dock",
-      ".customize-section",
-      ".settings-panel",
-      "footer"
-    ];
+    const core = document.createElement("div");
+    core.id = "jat-boot-core";
+    document.body.appendChild(core);
 
-    const candidates = [];
-    const seen = new Set();
-
-    selectors.forEach(selector => {
-      document.querySelectorAll(selector).forEach(el => {
-        if (seen.has(el)) return;
-        if (el.closest("script, style, template")) return;
-        if (el.getBoundingClientRect().width === 0 ||
-            el.getBoundingClientRect().height === 0) return;
-        seen.add(el);
-        candidates.push(el);
-      });
+    requestAnimationFrame(() => {
+      core.classList.add("ignited");
     });
 
-    candidates.sort((a, b) => {
-      if (a === b) return 0;
-      const relation = a.compareDocumentPosition(b);
-      return relation & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1;
+    const excluded = new Set([
+      "SCRIPT", "STYLE", "LINK", "META", "TEMPLATE",
+      "NOSCRIPT", "OPTION"
+    ]);
+
+    const selector = [
+      "header", "nav", "main", "section", "aside", "footer",
+      ".topbar", ".navbar", ".sidebar", ".toolbar", ".hero",
+      ".dashboard", ".main-content", ".home-section",
+      ".panel", ".card", ".folder-card", ".app-card",
+      ".app-grid", ".dock", ".status-bar",
+      ".customize-section", ".settings-panel",
+      "button"
+    ].join(",");
+
+    const candidates = Array.from(document.querySelectorAll(selector));
+
+    function isVisible(el) {
+      if (!el || excluded.has(el.tagName)) return false;
+      if (el.closest("[hidden], [aria-hidden='true']")) return false;
+
+      const style = getComputedStyle(el);
+      if (style.display === "none" ||
+          style.visibility === "hidden" ||
+          Number(style.opacity) === 0) return false;
+
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    }
+
+    // Keep only visible elements and remove duplicate selector matches.
+    const elements = [...new Set(candidates)].filter(isVisible);
+
+    // Group by depth so parent containers appear before their contents.
+    const depth = el => {
+      let count = 0;
+      for (let p = el.parentElement; p; p = p.parentElement) count++;
+      return count;
+    };
+
+    elements.sort((a, b) => depth(a) - depth(b));
+
+    // Do not animate nested descendants of a hidden element simultaneously.
+    const layers = [];
+    elements.forEach(el => {
+      const d = depth(el);
+      if (!layers[d]) layers[d] = [];
+      layers[d].push(el);
     });
 
-    // Avoid hiding a whole section and then hiding every child inside it.
-    const selected = candidates.filter(el => {
-      return !candidates.some(parent =>
-        parent !== el &&
-        parent.contains(el) &&
-        (
-          parent.matches("main, section, header, nav, .dashboard, .main-content, .home-section") &&
-          !el.matches(".card, .panel, .folder-card, .app-card")
-        )
-      );
+    // Hide the selected elements without changing their layout.
+    elements.forEach(el => {
+      el.classList.add("jat-boot-hidden");
     });
 
-    // Reveal meaningful interface elements in document order.
-    selected.forEach((el, index) => {
-      el.classList.add("jat-boot-item");
-      const delay = 500 + index * 1100;
-      window.setTimeout(() => {
-        el.classList.add("jat-boot-visible");
-      }, delay);
-    });
+    // Reveal one feature at a time, with at least 1.1 seconds between starts.
+    let index = 0;
+    const revealNext = () => {
+      if (index >= elements.length) return;
 
-    // Reveal anything not covered by the feature selectors after the initial sequence.
-    window.setTimeout(() => {
-      document.querySelectorAll(".jat-boot-item:not(.jat-boot-visible)")
-        .forEach(el => el.classList.add("jat-boot-visible"));
-    }, 500 + selected.length * 1100 + 1200);
-  };
+      const el = elements[index++];
+      el.classList.remove("jat-boot-hidden");
+      el.classList.add("jat-boot-reveal");
+
+      window.setTimeout(revealNext, 1100);
+    };
+
+    // Let the core light begin glowing before the interface starts appearing.
+    window.setTimeout(revealNext, 5000);
+  }
 
   if (document.readyState === "complete") {
-    window.setTimeout(boot, 250);
+    window.setTimeout(startJatSystemBoot, 500);
   } else {
-    window.addEventListener("load", () => window.setTimeout(boot, 250), { once: true });
+    window.addEventListener("load", () => {
+      window.setTimeout(startJatSystemBoot, 500);
+    }, { once: true });
   }
 })();
