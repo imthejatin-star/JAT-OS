@@ -14,11 +14,15 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.provider.Settings;
 import android.net.Uri;
 import android.util.Base64;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
@@ -30,6 +34,7 @@ import android.webkit.WebView;
 import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -312,9 +317,304 @@ public class MainActivity extends Activity {
         footerParams.topMargin=dp(12);
         root.addView(footer,footerParams);
 
-        setContentView(scroll);
+        FrameLayout lockLayer = new FrameLayout(this);
+        lockLayer.addView(scroll, new FrameLayout.LayoutParams(-1, -1));
+
+        TextView quickAccess = text("◉", 23, 0xFF65EAB2);
+        quickAccess.setGravity(Gravity.CENTER);
+        quickAccess.setBackground(background(0xFF0C1510, 0xFF294B34));
+        quickAccess.setContentDescription("Quick access");
+        FrameLayout.LayoutParams quickParams = new FrameLayout.LayoutParams(
+            dp(46), dp(46), Gravity.BOTTOM | Gravity.RIGHT
+        );
+        quickParams.setMargins(0, 0, dp(20), dp(20));
+        lockLayer.addView(quickAccess, quickParams);
+        quickAccess.setOnClickListener(v -> showQuickPad());
+
+        setContentView(lockLayer);
         animationStep=0;
         handler.post(terminalAnimation);
+    }
+
+
+    private void showQuickPad() {
+        unlocked = false;
+        gateVisible = true;
+        handler.removeCallbacks(terminalAnimation);
+
+        LinearLayout screen = new LinearLayout(this);
+        screen.setOrientation(LinearLayout.VERTICAL);
+        screen.setGravity(Gravity.CENTER);
+        screen.setPadding(dp(25), dp(20), dp(25), dp(20));
+        screen.setBackgroundColor(0xFF050907);
+
+        TextView back = text("‹", 34, 0xFF65EAB2);
+        back.setGravity(Gravity.CENTER);
+        screen.addView(back, new LinearLayout.LayoutParams(-1, dp(48)));
+        back.setOnClickListener(v -> showGate());
+
+        TextView dots = text("○  ○", 25, 0xFF65EAB2);
+        dots.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams dotsParams =
+            new LinearLayout.LayoutParams(-1, dp(65));
+        dotsParams.bottomMargin = dp(15);
+        screen.addView(dots, dotsParams);
+
+        String[][] keys = {
+            {"1", "2", "3"},
+            {"4", "5", "6"},
+            {"7", "8", "9"},
+            {"⌫", "0", "×"}
+        };
+
+        StringBuilder entered = new StringBuilder();
+
+        for (String[] rowKeys : keys) {
+            LinearLayout row = new LinearLayout(this);
+            row.setGravity(Gravity.CENTER);
+
+            LinearLayout.LayoutParams rowParams =
+                new LinearLayout.LayoutParams(-1, dp(62));
+            rowParams.bottomMargin = dp(7);
+            screen.addView(row, rowParams);
+
+            for (String key : rowKeys) {
+                TextView button = text(key, 21, 0xFFD6E5D8);
+                button.setGravity(Gravity.CENTER);
+                button.setBackground(background(0xFF0C1510, 0xFF294B34));
+
+                LinearLayout.LayoutParams keyParams =
+                    new LinearLayout.LayoutParams(0, -1, 1f);
+                keyParams.setMargins(dp(5), 0, dp(5), 0);
+                row.addView(button, keyParams);
+
+                button.setOnClickListener(v -> {
+                    if ("×".equals(key)) {
+                        showGate();
+                        return;
+                    }
+
+                    if ("⌫".equals(key)) {
+                        if (entered.length() > 0) {
+                            entered.deleteCharAt(entered.length() - 1);
+                        }
+                    } else if (entered.length() < 2) {
+                        entered.append(key);
+                    }
+
+                    dots.setText(
+                        (entered.length() > 0 ? "●" : "○") +
+                        "  " +
+                        (entered.length() > 1 ? "●" : "○")
+                    );
+
+                    if (entered.length() == 2) {
+                        verifyQuickCode(entered.toString());
+                    }
+                });
+            }
+        }
+
+        setContentView(screen);
+    }
+
+    private void verifyQuickCode(String code) {
+        try {
+            if (!security.contains("quick_pin_hash")) {
+                byte[] salt = new byte[16];
+                new SecureRandom().nextBytes(salt);
+                byte[] hash = hashPassword(code, salt);
+
+                security.edit()
+                    .putString("quick_pin_salt",
+                        Base64.encodeToString(salt, Base64.NO_WRAP))
+                    .putString("quick_pin_hash",
+                        Base64.encodeToString(hash, Base64.NO_WRAP))
+                    .apply();
+
+                showFingerprintGate();
+                return;
+            }
+
+            byte[] salt = Base64.decode(
+                security.getString("quick_pin_salt", ""),
+                Base64.NO_WRAP
+            );
+            byte[] expected = Base64.decode(
+                security.getString("quick_pin_hash", ""),
+                Base64.NO_WRAP
+            );
+            byte[] actual = hashPassword(code, salt);
+
+            if (MessageDigest.isEqual(expected, actual)) {
+                showFingerprintGate();
+            } else {
+                showQuickPad();
+            }
+        } catch (Exception e) {
+            showQuickPad();
+        }
+    }
+
+    private void showFingerprintGate() {
+        unlocked = false;
+        gateVisible = true;
+        handler.removeCallbacks(terminalAnimation);
+
+        LinearLayout screen = new LinearLayout(this);
+        screen.setOrientation(LinearLayout.VERTICAL);
+        screen.setGravity(Gravity.CENTER);
+        screen.setBackgroundColor(0xFF050907);
+
+        TextView back = text("‹", 34, 0xFF65EAB2);
+        back.setGravity(Gravity.CENTER);
+        screen.addView(back, new LinearLayout.LayoutParams(-1, dp(55)));
+        back.setOnClickListener(v -> showQuickPad());
+
+        QuickFingerprintView fingerprint = new QuickFingerprintView(
+            this, () -> unlockSystem()
+        );
+
+        LinearLayout.LayoutParams fingerprintParams =
+            new LinearLayout.LayoutParams(dp(270), dp(310));
+        fingerprintParams.gravity = Gravity.CENTER;
+        screen.addView(fingerprint, fingerprintParams);
+
+        setContentView(screen);
+    }
+
+    private class QuickFingerprintView extends View {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Runnable onComplete;
+        private boolean scanning = false;
+        private long scanStarted = 0L;
+        private static final long SCAN_DURATION = 5600L;
+
+        private final Runnable scanTick = new Runnable() {
+            @Override
+            public void run() {
+                if (!scanning) return;
+
+                long elapsed = System.currentTimeMillis() - scanStarted;
+
+                if (elapsed >= SCAN_DURATION) {
+                    scanning = false;
+                    invalidate();
+                    onComplete.run();
+                    return;
+                }
+
+                invalidate();
+                handler.postDelayed(this, 16);
+            }
+        };
+
+        QuickFingerprintView(Context context, Runnable callback) {
+            super(context);
+            onComplete = callback;
+            setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            super.onDraw(canvas);
+
+            float cx = getWidth() / 2f;
+            float cy = getHeight() / 2f;
+            float d = getResources().getDisplayMetrics().density;
+
+            paint.setStyle(Paint.Style.STROKE);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            paint.setStrokeJoin(Paint.Join.ROUND);
+            paint.setStrokeWidth(2.1f * d);
+            paint.setColor(0xFF65EAB2);
+            paint.setAlpha(210);
+
+            for (int i = 0; i < 9; i++) {
+                float rx = (22f + i * 7.2f) * d;
+                float ry = (29f + i * 8.2f) * d;
+                RectF oval = new RectF(
+                    cx - rx, cy - ry, cx + rx, cy + ry
+                );
+                canvas.drawArc(oval, 205f, 310f, false, paint);
+            }
+
+            Path inner = new Path();
+            inner.moveTo(cx - 15f*d, cy + 40f*d);
+            inner.cubicTo(
+                cx - 27f*d, cy - 8f*d,
+                cx + 27f*d, cy - 48f*d,
+                cx + 12f*d, cy - 3f*d
+            );
+            inner.cubicTo(
+                cx + 4f*d, cy + 25f*d,
+                cx - 9f*d, cy + 19f*d,
+                cx - 7f*d, cy - 2f*d
+            );
+            canvas.drawPath(inner, paint);
+
+            if (scanning) {
+                float progress = Math.min(
+                    1f,
+                    (System.currentTimeMillis() - scanStarted) /
+                        (float) SCAN_DURATION
+                );
+
+                float top = cy - 75f*d;
+                float bottom = cy + 75f*d;
+                float y;
+
+                if (progress <= 0.5f) {
+                    y = top + progress * 2f * (bottom - top);
+                } else {
+                    y = bottom - (progress - 0.5f) * 2f * (bottom - top);
+                }
+
+                paint.setStrokeWidth(11f*d);
+                paint.setAlpha(35);
+                canvas.drawLine(
+                    cx - 88f*d, y, cx + 88f*d, y, paint
+                );
+
+                paint.setStrokeWidth(2.2f*d);
+                paint.setAlpha(255);
+                canvas.drawLine(
+                    cx - 88f*d, y, cx + 88f*d, y, paint
+                );
+            }
+        }
+
+        @Override
+        public boolean onTouchEvent(MotionEvent event) {
+            switch (event.getAction()) {
+                case MotionEvent.ACTION_DOWN:
+                    if (!scanning) {
+                        scanning = true;
+                        scanStarted = System.currentTimeMillis();
+                        handler.removeCallbacks(scanTick);
+                        handler.post(scanTick);
+                        invalidate();
+                    }
+                    return true;
+
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    if (scanning) {
+                        scanning = false;
+                        handler.removeCallbacks(scanTick);
+                        invalidate();
+                    }
+                    return true;
+            }
+            return true;
+        }
+
+        @Override
+        protected void onDetachedFromWindow() {
+            scanning = false;
+            handler.removeCallbacks(scanTick);
+            super.onDetachedFromWindow();
+        }
     }
 
     private void authenticate(boolean setup) {
