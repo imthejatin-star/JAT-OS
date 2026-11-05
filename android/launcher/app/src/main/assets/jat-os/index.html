@@ -2,207 +2,213 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<meta name="theme-color" content="#05080c">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#080d0a">
 <title>JAT OS</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
-<div class="ambient"></div>
 <canvas id="matrix"></canvas>
+<div class="scanlines"></div>
 
 <div id="app">
-    <header class="topbar">
+    <header class="topbar boot-target">
         <div class="brand">
             <div class="brand-mark">J</div>
-            <div>
-                <div class="brand-name">JAT<span> OS</span></div>
-                <div class="brand-status"><i></i> SYSTEM ONLINE</div>
+            <div class="brand-copy">
+                <div class="brand-name">JAT<span>//OS</span></div>
+                <div class="brand-status"><i></i><span>ONLINE</span></div>
             </div>
         </div>
         <div class="top-actions">
-            <div class="clock" id="clock">--:--</div>
-            <button class="settings-shortcut" onclick="deviceSettings()" aria-label="Device settings">⚙</button>
+            <div id="clock" class="clock">--:--</div>
+            <button class="icon-button" onclick="deviceSettings()" aria-label="Android settings">⌘</button>
         </div>
     </header>
 
     <main id="mainContent">
         <section id="homeScreen" class="screen active">
-            <div class="hero">
-                <div class="eyebrow">PERSONAL INTERFACE / 01</div>
-                <h1>Welcome<span class="accent">.</span></h1>
-                <p class="subline">Your device. Your environment.</p>
+            <div class="hero boot-target">
+                <div class="eyebrow">JAT / COMMAND DECK</div>
+                <h1>COMMAND<span class="accent">_</span></h1>
                 <div class="system-line">
                     <span id="deviceName">ANDROID DEVICE</span>
                     <span class="line"></span>
-                    <span id="appCount">SCANNING APPS...</span>
+                    <span id="appCount">INDEXING</span>
                 </div>
             </div>
 
-            <div class="section-heading">
+            <section class="terminal-panel boot-target">
+                <div class="terminal-head">
+                    <span><i class="live-dot"></i> SYSTEM STREAM</span>
+                    <span id="streamClock">00:00:00</span>
+                </div>
+                <div id="systemStream" class="terminal-stream"></div>
+            </section>
+
+            <div class="section-heading boot-target">
                 <div>
-                    <span class="eyebrow">QUICK ACCESS</span>
+                    <span class="eyebrow">PINNED</span>
                     <h2>Favourites</h2>
                 </div>
                 <button class="text-button" onclick="showScreen('applicationsScreen')">ALL APPS ↗</button>
             </div>
-            <div id="favourites" class="app-grid favourite-grid"></div>
+            <div id="favourites" class="app-grid favourite-grid boot-target"></div>
 
-
-            <div class="section-heading folder-section-heading">
+            <div class="section-heading boot-target">
                 <div>
-                    <span class="eyebrow">PRIVATE DIRECTORY</span>
-                    <h2>My folders</h2>
+                    <span class="eyebrow">DIRECTORIES</span>
+                    <h2>Folders</h2>
                 </div>
                 <button class="text-button" onclick="showScreen('customizeScreen')">MANAGE ↗</button>
             </div>
-            <div id="homeFolders" class="folder-grid"></div>
+            <div id="homeFolders" class="folder-grid boot-target"></div>
 
-            <div class="section-heading lower-heading">
+            <div class="section-heading boot-target">
                 <div>
                     <span class="eyebrow">SYSTEM</span>
-                    <h2>Workspace</h2>
+                    <h2>Shortcuts</h2>
                 </div>
             </div>
-            <div class="workspace-grid">
-                <button class="workspace-card" onclick="showScreen('applicationsScreen')">
-                    <span class="workspace-icon">▦</span>
-                    <span>Applications</span>
-                    <small>Installed apps</small>
+            <div class="shortcut-grid boot-target">
+                <button class="shortcut" onclick="showScreen('applicationsScreen')">
+                    <span>▦</span>Applications
                 </button>
-                <button class="workspace-card" onclick="showScreen('customizeScreen')">
-                    <span class="workspace-icon">◈</span>
-                    <span>Appearance</span>
-                    <small>Personalize interface</small>
+                <button class="shortcut" onclick="showScreen('customizeScreen')">
+                    <span>◈</span>Workspace
                 </button>
-                <button class="workspace-card" onclick="showScreen('notesScreen')">
-                    <span class="workspace-icon">⌁</span>
-                    <span>Quick notes</span>
-                    <small>Personal workspace</small>
+                <button class="shortcut" onclick="showScreen('notesScreen')">
+                    <span>⌁</span>Notes
                 </button>
-                <button class="workspace-card" onclick="deviceSettings()">
-                    <span class="workspace-icon">⚙</span>
-                    <span>Device settings</span>
-                    <small>Android controls</small>
+                <button class="shortcut" onclick="deviceSettings()">
+                    <span>⌘</span>Settings
                 </button>
             </div>
         </section>
 
         <section id="applicationsScreen" class="screen">
-            <div class="page-heading">
-                <div class="eyebrow">APPLICATION DIRECTORY / 02</div>
+            <div class="page-heading boot-target">
+                <div class="eyebrow">APPLICATION INDEX / 01</div>
                 <h1>Applications<span class="accent">.</span></h1>
-                <p class="subline">Apps available on this device.</p>
             </div>
-            <div class="search-wrap">
+
+            <div class="search-wrap boot-target">
                 <span>⌕</span>
-                <input id="appSearch" type="search" placeholder="Search installed applications..." autocomplete="off">
-                <button onclick="clearSearch()">×</button>
+                <input id="appSearch" type="search" placeholder="Search applications..." autocomplete="off">
+                <button onclick="clearSearch()" aria-label="Clear search">×</button>
             </div>
-            <div class="app-toolbar">
-                <span id="appTotal">LOADING APPLICATIONS</span>
-                <button class="text-button" onclick="refreshApps()">↻ REFRESH</button>
+
+            <div class="app-toolbar boot-target">
+                <span id="appTotal">0 APPLICATIONS</span>
+                <select id="sortOrder" onchange="renderApps()">
+                    <option value="az">A–Z</option>
+                    <option value="za">Z–A</option>
+                </select>
             </div>
-            <div id="allApps" class="app-grid"></div>
+
+            <div id="categoryFilters" class="category-filters boot-target"></div>
+            <div id="allApps" class="app-grid boot-target"></div>
+
             <div id="emptyApps" class="empty-state" hidden>
-                <div class="empty-symbol">⌕</div>
-                <h3>No applications found</h3>
-                <p>Try another search or refresh the application list.</p>
+                <span>⌕</span>
+                <h3>NO MATCHES</h3>
+                <p>Try another search or category.</p>
             </div>
         </section>
 
         <section id="customizeScreen" class="screen">
-            <div class="page-heading">
-                <div class="eyebrow">INTERFACE CONFIGURATION / 03</div>
-                <h1>Customize<span class="accent">.</span></h1>
-                <p class="subline">Configure your workspace.</p>
+            <div class="page-heading boot-target">
+                <div class="eyebrow">SYSTEM CONFIGURATION / 02</div>
+                <h1>Workspace<span class="accent">.</span></h1>
             </div>
 
-            <div class="settings-panel">
+            <div class="settings-panel boot-target">
+                <div class="panel-title">APP DRAWER</div>
+
                 <div class="setting-row">
-                    <div><strong>Grid columns</strong><small>Apps per row</small></div>
+                    <div><strong>Grid columns</strong><small>Applications per row</small></div>
                     <select id="gridColumns" onchange="saveAppearance()">
-                        <option value="3">3 columns</option>
-                        <option value="4">4 columns</option>
-                        <option value="5">5 columns</option>
-                        <option value="6">6 columns</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
                     </select>
                 </div>
+
                 <div class="setting-row">
-                    <div><strong>Icon size</strong><small>Application icon scale</small></div>
+                    <div><strong>Icon scale</strong><small>Application icon size</small></div>
                     <select id="iconSize" onchange="saveAppearance()">
                         <option value="small">Small</option>
                         <option value="medium">Medium</option>
                         <option value="large">Large</option>
                     </select>
                 </div>
+
                 <div class="setting-row">
-                    <div><strong>Application labels</strong><small>Show names below icons</small></div>
+                    <div><strong>App labels</strong><small>Display names below icons</small></div>
                     <label class="switch"><input id="showLabels" type="checkbox" checked onchange="saveAppearance()"><span></span></label>
                 </div>
+
                 <div class="setting-row">
-                    <div><strong>Sort applications</strong><small>Display order</small></div>
-                    <select id="sortOrder" onchange="renderApps()">
-                        <option value="az">A to Z</option>
-                        <option value="za">Z to A</option>
-                    </select>
+                    <div><strong>Show hidden apps</strong><small>Include hidden applications in drawer</small></div>
+                    <label class="switch"><input id="showHidden" type="checkbox" onchange="renderApps()"><span></span></label>
                 </div>
+
                 <div class="setting-row">
-                    <div><strong>Interface theme</strong><small>Visual appearance</small></div>
+                    <div><strong>Colour environment</strong><small>Interface palette</small></div>
                     <select id="themeMode" onchange="saveAppearance()">
-                        <option value="dark">Dark</option>
-                        <option value="eye">Eye comfort / warm</option>
-                        <option value="midnight">Midnight green</option>
+                        <option value="hacker">Terminal green</option>
+                        <option value="eye">Warm low-glare</option>
+                        <option value="midnight">Deep green</option>
                     </select>
                 </div>
+
                 <div class="setting-row">
-                    <div><strong>Background animation</strong><small>Animated ambient particles</small></div>
+                    <div><strong>Ambient animation</strong><small>Background character stream</small></div>
                     <label class="switch"><input id="animations" type="checkbox" checked onchange="saveAppearance()"><span></span></label>
                 </div>
             </div>
 
-            <div class="folder-manager">
-                <div class="folder-manager-heading">
-                    <div class="eyebrow">DIRECTORY CONTROL / 05</div>
-                    <h2>Private folders</h2>
-                    <p>Create your own app directories and decide which applications belong in each one.</p>
-                </div>
-
+            <div class="settings-panel boot-target">
+                <div class="panel-title">DIRECTORY CONTROL</div>
                 <div class="folder-create">
-                    <input id="newFolderName" type="text" maxlength="24"
-                           placeholder="Enter folder name..." autocomplete="off">
-                    <button onclick="createFolder()">CREATE</button>
-                </div>
-
-                <div class="folder-assignment">
-                    <label for="folderTarget">SELECT DIRECTORY</label>
-                    <select id="folderTarget" onchange="renderFolderAssignments()">
-                        <option value="">Choose a folder</option>
+                    <input id="newFolderName" maxlength="26" placeholder="New folder name..." autocomplete="off">
+                    <select id="newFolderColor" aria-label="Folder colour">
+                        <option value="green">GREEN</option>
+                        <option value="amber">AMBER</option>
+                        <option value="blue">BLUE</option>
+                        <option value="red">RED</option>
                     </select>
-                    <div id="folderAppAssignments" class="assignment-list">
-                        <div class="assignment-empty">Create a folder to begin.</div>
-                    </div>
-                    <button class="outline-button full-button" onclick="saveFolderAssignments()">SAVE DIRECTORY CONTENTS</button>
+                    <button class="action-button" onclick="createFolder()">CREATE</button>
                 </div>
-
-                <div class="eyebrow folder-list-label">EXISTING DIRECTORIES</div>
+                <div class="setting-row">
+                    <div><strong>Folder layout</strong><small>Opened folder arrangement</small></div>
+                    <select id="folderLayout" onchange="saveAppearance()">
+                        <option value="grid">Grid</option>
+                        <option value="list">List</option>
+                    </select>
+                </div>
                 <div id="managedFolders" class="managed-folders"></div>
             </div>
-            <button class="outline-button full-button" onclick="resetAppearance()">RESET APPEARANCE</button>
+
+            <div class="settings-panel boot-target">
+                <div class="panel-title">SYSTEM</div>
+                <button class="wide-action" onclick="refreshApps()">↻ REBUILD APPLICATION INDEX</button>
+                <button class="wide-action danger-action" onclick="resetAppearance()">RESET APPEARANCE</button>
+            </div>
         </section>
 
         <section id="notesScreen" class="screen">
-            <div class="page-heading">
-                <div class="eyebrow">PERSONAL WORKSPACE / 04</div>
-                <h1>Quick notes<span class="accent">.</span></h1>
-                <p class="subline">Your notes stay on this device.</p>
+            <div class="page-heading boot-target">
+                <div class="eyebrow">PERSONAL DATA / 03</div>
+                <h1>Notes<span class="accent">.</span></h1>
             </div>
             <textarea id="notesArea" placeholder="Write something..."></textarea>
-            <div class="note-status" id="noteStatus">SAVED LOCALLY</div>
+            <div id="noteStatus" class="note-status">READY</div>
         </section>
     </main>
 
-    <nav class="bottom-nav">
+    <nav class="bottom-nav boot-target">
         <button class="nav-item active" data-screen="homeScreen" onclick="showScreen('homeScreen')">
             <span>⌂</span><small>HOME</small>
         </button>
@@ -210,7 +216,7 @@
             <span>▦</span><small>APPS</small>
         </button>
         <button class="nav-item" data-screen="customizeScreen" onclick="showScreen('customizeScreen')">
-            <span>◈</span><small>STYLE</small>
+            <span>◈</span><small>SETUP</small>
         </button>
         <button class="nav-item" data-screen="notesScreen" onclick="showScreen('notesScreen')">
             <span>⌁</span><small>NOTES</small>
@@ -218,25 +224,27 @@
     </nav>
 </div>
 
-
-<div id="folderModal" class="folder-modal" onclick="if(event.target===this)closeFolder()">
+<div id="folderModal" class="overlay" hidden>
     <div class="folder-window">
-        <div class="folder-window-top">
+        <div class="modal-head">
             <div>
-                <div class="folder-terminal-label">JAT FILE SYSTEM // PRIVATE DIRECTORY</div>
-                <h2 id="folderModalTitle">DIRECTORY</h2>
+                <div class="eyebrow">DIRECTORY / OPEN</div>
+                <h2 id="folderModalTitle">FOLDER</h2>
             </div>
-            <button class="folder-close" onclick="closeFolder()">×</button>
+            <button class="close-button" onclick="closeFolder()">×</button>
         </div>
-        <div class="folder-path"><span>ROOT</span> / <span id="folderPathName">DIRECTORY</span> / ACCESS GRANTED</div>
-        <div class="folder-window-line"></div>
+        <div class="folder-meta" id="folderMeta">ROOT / DIRECTORY</div>
         <div id="folderModalApps" class="app-grid folder-modal-grid"></div>
-        <div id="folderModalEmpty" class="folder-empty" hidden>THIS DIRECTORY IS EMPTY</div>
-        <div class="folder-window-footer">LOCAL STORAGE // ENCRYPTED-STYLE INTERFACE</div>
+        <div id="folderModalEmpty" class="empty-state" hidden>THIS DIRECTORY IS EMPTY</div>
     </div>
 </div>
 
+<div id="contextOverlay" class="context-overlay" hidden>
+    <div id="contextMenu" class="context-menu"></div>
+</div>
+
 <div id="toast" class="toast"></div>
+
 <script src="app.js"></script>
 </body>
 </html>

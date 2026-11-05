@@ -14,7 +14,7 @@ import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
-import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.Drawable;
 import android.provider.Settings;
 import android.net.Uri;
 import android.util.Base64;
@@ -38,7 +38,6 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.ByteArrayOutputStream;
-import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.util.Collections;
@@ -49,67 +48,56 @@ import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
 
 public class MainActivity extends Activity {
-
     private WebView webView;
-    private LinearLayout gateRoot;
     private EditText passwordInput;
     private EditText confirmInput;
     private TextView terminalOutput;
-    private Button accessButton;
 
     private final Handler handler = new Handler(Looper.getMainLooper());
-    private boolean unlocked = false;
-    private boolean receiverRegistered = false;
-    private boolean gateVisible = false;
-    private int animationStep = 0;
-
     private SharedPreferences security;
+
+    private boolean unlocked = false;
+    private boolean gateVisible = false;
+    private boolean receiverRegistered = false;
+    private boolean webReady = false;
+    private int animationStep = 0;
 
     private final String[] terminalLines = {
         "INITIALIZING JAT SECURITY CORE...",
-        "CHECKING LOCAL ENVIRONMENT...",
-        "ENCRYPTED SESSION CHANNEL READY",
-        "VERIFYING SYSTEM INTEGRITY...",
-        "ACCESS CONTROL ACTIVE",
+        "CHECKING ACCESS CONTROL...",
+        "SESSION CHANNEL READY",
+        "VERIFYING CREDENTIALS...",
+        "INTERFACE MODULE STANDBY",
         "WAITING FOR AUTHENTICATION...",
-        "LOCAL SECURITY MODULE ONLINE",
+        "SECURITY SESSION ACTIVE",
         "JAT OS // PRIVATE SESSION"
     };
 
     private final Runnable terminalAnimation = new Runnable() {
-        @Override
-        public void run() {
+        @Override public void run() {
             if (!gateVisible || terminalOutput == null) return;
-
             StringBuilder output = new StringBuilder();
             int start = Math.max(0, animationStep - 4);
-
-            for (int i = start; i <= animationStep; i++) {
+            for (int i=start; i<=animationStep; i++) {
                 output.append("> ")
-                      .append(terminalLines[i % terminalLines.length])
-                      .append("\n");
+                    .append(terminalLines[i % terminalLines.length])
+                    .append("\n");
             }
-
-            output.append("\n");
-            output.append("SYSTEM // ")
-                  .append(String.format("%04d", animationStep % 10000));
-
+            output.append("\nSESSION // ")
+                .append(String.format("%04d", animationStep % 10000));
             terminalOutput.setText(output.toString());
             animationStep++;
-            handler.postDelayed(this, 1100);
+            handler.postDelayed(this,1100);
         }
     };
 
     private final BroadcastReceiver screenReceiver = new BroadcastReceiver() {
-        @Override
-        public void onReceive(Context context, Intent intent) {
-            String action = intent.getAction();
-
-            if (Intent.ACTION_SCREEN_OFF.equals(action)) {
+        @Override public void onReceive(Context context, Intent intent) {
+            if (Intent.ACTION_SCREEN_OFF.equals(intent.getAction())) {
                 unlocked = false;
                 gateVisible = false;
                 handler.removeCallbacks(terminalAnimation);
-            } else if (Intent.ACTION_SCREEN_ON.equals(action)) {
+            } else if (Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
                 unlocked = false;
                 showGate();
             }
@@ -119,9 +107,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        security = getSharedPreferences("jat_security", MODE_PRIVATE);
-
+        security = getSharedPreferences("jat_security",MODE_PRIVATE);
         createWebView();
         registerScreenReceiver();
         showGate();
@@ -129,7 +115,7 @@ public class MainActivity extends Activity {
 
     private void createWebView() {
         webView = new WebView(this);
-        webView.setBackgroundColor(0xFF05080C);
+        webView.setBackgroundColor(0xFF080D0A);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -138,59 +124,74 @@ public class MainActivity extends Activity {
         settings.setAllowFileAccess(true);
         settings.setLoadsImagesAutomatically(true);
         settings.setSupportZoom(false);
+        settings.setBuiltInZoomControls(false);
 
-        webView.addJavascriptInterface(new JatBridge(), "JAT");
+        webView.addJavascriptInterface(new JatBridge(),"JAT");
         webView.setWebChromeClient(new WebChromeClient());
-        webView.setWebViewClient(new WebViewClient());
-
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageFinished(WebView view,String url) {
+                webReady = true;
+                if (unlocked) triggerSystemBoot();
+            }
+        });
         webView.loadUrl("file:///android_asset/jat-os/index.html");
+    }
+
+    private void triggerSystemBoot() {
+        if (webView == null || !webReady || !unlocked) return;
+        webView.postDelayed(() -> {
+            if (webView != null && unlocked) {
+                webView.evaluateJavascript(
+                    "if(window.JATSystemBoot){window.JATSystemBoot();}",null
+                );
+            }
+        },250);
     }
 
     private void registerScreenReceiver() {
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_SCREEN_OFF);
         filter.addAction(Intent.ACTION_SCREEN_ON);
-
         if (Build.VERSION.SDK_INT >= 33) {
-            registerReceiver(screenReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+            registerReceiver(screenReceiver,filter,Context.RECEIVER_NOT_EXPORTED);
         } else {
-            registerReceiver(screenReceiver, filter);
+            registerReceiver(screenReceiver,filter);
         }
-
         receiverRegistered = true;
     }
 
-    private GradientDrawable background(int color, int strokeColor) {
-        GradientDrawable drawable = new GradientDrawable();
+    private int dp(float value) {
+        return (int)(value*getResources().getDisplayMetrics().density+0.5f);
+    }
+
+    private android.graphics.drawable.GradientDrawable background(int color,int stroke) {
+        android.graphics.drawable.GradientDrawable drawable =
+            new android.graphics.drawable.GradientDrawable();
         drawable.setColor(color);
-        drawable.setCornerRadius(dp(12));
-        drawable.setStroke(dp(1), strokeColor);
+        drawable.setCornerRadius(dp(5));
+        drawable.setStroke(dp(1),stroke);
         return drawable;
     }
 
-    private int dp(float value) {
-        return (int) (value * getResources().getDisplayMetrics().density + 0.5f);
-    }
-
-    private TextView text(String value, int size, int color) {
+    private TextView text(String value,int size,int color) {
         TextView view = new TextView(this);
         view.setText(value);
         view.setTextSize(size);
         view.setTextColor(color);
+        view.setTypeface(android.graphics.Typeface.MONOSPACE);
         return view;
     }
 
     private void showGate() {
         if (isFinishing()) return;
-
         unlocked = false;
         gateVisible = true;
-
         handler.removeCallbacks(terminalAnimation);
 
         Window window = getWindow();
-        window.setStatusBarColor(0xFF030609);
-        window.setNavigationBarColor(0xFF030609);
+        window.setStatusBarColor(0xFF050907);
+        window.setNavigationBarColor(0xFF050907);
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         window.getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_FULLSCREEN |
@@ -199,190 +200,154 @@ public class MainActivity extends Activity {
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         );
 
+        ScrollView scroll = new ScrollView(this);
+        scroll.setFillViewport(true);
+        scroll.setBackgroundColor(0xFF050907);
+
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setGravity(Gravity.CENTER_HORIZONTAL);
-        root.setPadding(dp(27), dp(25), dp(27), dp(25));
-        root.setBackgroundColor(0xFF030609);
-        gateRoot = root;
+        root.setPadding(dp(26),dp(28),dp(26),dp(24));
+        scroll.addView(root,new ScrollView.LayoutParams(-1,-2));
 
-        TextView logo = text("JAT // OS", 27, 0xFF65F5B8);
-        logo.setTypeface(android.graphics.Typeface.MONOSPACE, 1);
+        TextView logo = text("JAT // OS",28,0xFF9BC99D);
         logo.setGravity(Gravity.CENTER);
-        root.addView(logo, new LinearLayout.LayoutParams(
-            -1, dp(60)
-        ));
+        logo.setTypeface(android.graphics.Typeface.MONOSPACE,1);
+        root.addView(logo,new LinearLayout.LayoutParams(-1,dp(65)));
 
-        TextView subtitle = text("PRIVATE SYSTEM ACCESS", 10, 0xFF78948B);
+        TextView subtitle = text("PRIVATE SYSTEM ACCESS",10,0xFF748879);
         subtitle.setGravity(Gravity.CENTER);
-        subtitle.setLetterSpacing(0.22f);
+        subtitle.setLetterSpacing(.2f);
         root.addView(subtitle);
 
-        View spacer = new View(this);
-        root.addView(spacer, new LinearLayout.LayoutParams(1, dp(28)));
+        View gap = new View(this);
+        root.addView(gap,new LinearLayout.LayoutParams(1,dp(26)));
 
         LinearLayout terminal = new LinearLayout(this);
         terminal.setOrientation(LinearLayout.VERTICAL);
-        terminal.setPadding(dp(16), dp(15), dp(16), dp(15));
-        terminal.setBackground(background(0xFF07100F, 0xFF174B3B));
+        terminal.setPadding(dp(15),dp(14),dp(15),dp(14));
+        terminal.setBackground(background(0xFF0C1510,0xFF294B34));
 
-        TextView terminalTitle = text(
-            "SECURITY TERMINAL  /  LIVE",
-            9, 0xFF55CFA0
-        );
-        terminalTitle.setTypeface(android.graphics.Typeface.MONOSPACE, 1);
+        TextView terminalTitle = text("SECURITY TERMINAL  /  LIVE",9,0xFF9BC99D);
         terminal.addView(terminalTitle);
 
-        terminalOutput = text("", 11, 0xFF65DFAE);
-        terminalOutput.setTypeface(android.graphics.Typeface.MONOSPACE);
-        terminalOutput.setLineSpacing(dp(5), 1f);
-        LinearLayout.LayoutParams terminalTextParams =
-            new LinearLayout.LayoutParams(-1, dp(125));
-        terminalTextParams.topMargin = dp(13);
-        terminal.addView(terminalOutput, terminalTextParams);
+        terminalOutput = text("",11,0xFF9BC99D);
+        terminalOutput.setLineSpacing(dp(4),1f);
+        LinearLayout.LayoutParams terminalParams =
+            new LinearLayout.LayoutParams(-1,dp(130));
+        terminalParams.topMargin=dp(12);
+        terminal.addView(terminalOutput,terminalParams);
+        root.addView(terminal,new LinearLayout.LayoutParams(-1,dp(185)));
 
-        root.addView(terminal, new LinearLayout.LayoutParams(
-            -1, dp(190)
-        ));
-
-        View gap = new View(this);
-        root.addView(gap, new LinearLayout.LayoutParams(1, dp(30)));
+        View spacer = new View(this);
+        root.addView(spacer,new LinearLayout.LayoutParams(1,dp(27)));
 
         boolean setup = !security.contains("hash");
 
-        TextView accessTitle = text(
+        TextView title = text(
             setup ? "CREATE ACCESS PASSWORD" : "AUTHENTICATION REQUIRED",
-            13, 0xFFE3F1EB
+            13,0xFFD6E5D8
         );
-        accessTitle.setGravity(Gravity.CENTER);
-        accessTitle.setTypeface(android.graphics.Typeface.MONOSPACE, 1);
-        root.addView(accessTitle);
+        title.setGravity(Gravity.CENTER);
+        title.setTypeface(android.graphics.Typeface.MONOSPACE,1);
+        root.addView(title);
 
-        TextView accessSub = text(
-            setup ? "Set a password for your private interface." :
-                    "Enter your password to continue.",
-            10, 0xFF82958E
+        TextView hint = text(
+            setup ? "Create a password to initialize JAT OS." :
+                    "Enter your password to initialize the system.",
+            10,0xFF748879
         );
-        accessSub.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams subParams =
-            new LinearLayout.LayoutParams(-1, dp(34));
-        root.addView(accessSub, subParams);
+        hint.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams hintParams = new LinearLayout.LayoutParams(-1,dp(35));
+        root.addView(hint,hintParams);
 
         passwordInput = new EditText(this);
         passwordInput.setSingleLine(true);
-        passwordInput.setTextColor(0xFFE6F5EE);
-        passwordInput.setHintTextColor(0xFF63756D);
+        passwordInput.setTextColor(0xFFD6E5D8);
+        passwordInput.setHintTextColor(0xFF748879);
         passwordInput.setHint(setup ? "Create password" : "Enter password");
         passwordInput.setTextSize(13);
         passwordInput.setInputType(
             129 | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
         );
-        passwordInput.setPadding(dp(15), 0, dp(15), 0);
-        passwordInput.setBackground(background(0xFF0B1513, 0xFF235744));
-
-        LinearLayout.LayoutParams inputParams =
-            new LinearLayout.LayoutParams(-1, dp(52));
-        inputParams.topMargin = dp(17);
-        root.addView(passwordInput, inputParams);
+        passwordInput.setPadding(dp(14),0,dp(14),0);
+        passwordInput.setBackground(background(0xFF0D1711,0xFF365B40));
+        LinearLayout.LayoutParams inputParams = new LinearLayout.LayoutParams(-1,dp(51));
+        inputParams.topMargin=dp(15);
+        root.addView(passwordInput,inputParams);
 
         confirmInput = new EditText(this);
         confirmInput.setSingleLine(true);
-        confirmInput.setTextColor(0xFFE6F5EE);
-        confirmInput.setHintTextColor(0xFF63756D);
+        confirmInput.setTextColor(0xFFD6E5D8);
+        confirmInput.setHintTextColor(0xFF748879);
         confirmInput.setHint("Confirm password");
         confirmInput.setTextSize(13);
         confirmInput.setInputType(
             129 | android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
         );
-        confirmInput.setPadding(dp(15), 0, dp(15), 0);
-        confirmInput.setBackground(background(0xFF0B1513, 0xFF235744));
-
+        confirmInput.setPadding(dp(14),0,dp(14),0);
+        confirmInput.setBackground(background(0xFF0D1711,0xFF365B40));
         LinearLayout.LayoutParams confirmParams =
-            new LinearLayout.LayoutParams(-1, dp(52));
-        confirmParams.topMargin = dp(10);
+            new LinearLayout.LayoutParams(-1,dp(51));
+        confirmParams.topMargin=dp(9);
+        if (setup) root.addView(confirmInput,confirmParams);
 
-        if (setup) {
-            root.addView(confirmInput, confirmParams);
-        }
-
-        accessButton = new Button(this);
-        accessButton.setText(setup ? "INITIALIZE ACCESS" : "UNLOCK SYSTEM");
-        accessButton.setTextColor(0xFF03100B);
-        accessButton.setTextSize(11);
-        accessButton.setLetterSpacing(0.08f);
-        accessButton.setAllCaps(false);
-        accessButton.setBackground(background(0xFF65EAB2, 0xFF65EAB2));
-
+        Button access = new Button(this);
+        access.setText("INITIALIZE SYSTEM");
+        access.setTextColor(0xFF07100A);
+        access.setTextSize(11);
+        access.setLetterSpacing(.08f);
+        access.setAllCaps(false);
+        access.setBackground(background(0xFF9BC99D,0xFF9BC99D));
         LinearLayout.LayoutParams buttonParams =
-            new LinearLayout.LayoutParams(-1, dp(52));
-        buttonParams.topMargin = dp(17);
-        root.addView(accessButton, buttonParams);
+            new LinearLayout.LayoutParams(-1,dp(51));
+        buttonParams.topMargin=dp(16);
+        root.addView(access,buttonParams);
+        access.setOnClickListener(v -> authenticate(setup));
 
-        TextView footer = text(
-            "JAT OS  /  LOCAL ACCESS CONTROL",
-            8, 0xFF4F6960
-        );
+        TextView footer = text("JAT OS  /  ACCESS CONTROL",8,0xFF526A57);
         footer.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams footerParams =
-            new LinearLayout.LayoutParams(-1, dp(45));
-        footerParams.topMargin = dp(15);
-        root.addView(footer, footerParams);
+            new LinearLayout.LayoutParams(-1,dp(42));
+        footerParams.topMargin=dp(12);
+        root.addView(footer,footerParams);
 
-        accessButton.setOnClickListener(v -> authenticate(setup));
-
-        setContentView(root);
-
-        animationStep = 0;
+        setContentView(scroll);
+        animationStep=0;
         handler.post(terminalAnimation);
     }
 
     private void authenticate(boolean setup) {
         String password = passwordInput.getText().toString();
-
-        if (password.length() < 6) {
+        if (password.length()<6) {
             showMessage("PASSWORD MUST CONTAIN AT LEAST 6 CHARACTERS");
             return;
         }
-
         if (setup) {
             String confirmation = confirmInput.getText().toString();
-
             if (!password.equals(confirmation)) {
                 showMessage("PASSWORDS DO NOT MATCH");
                 return;
             }
-
             try {
                 byte[] salt = new byte[16];
                 new SecureRandom().nextBytes(salt);
-
-                byte[] hash = hashPassword(password, salt);
-
+                byte[] hash = hashPassword(password,salt);
                 security.edit()
-                    .putString("salt", Base64.encodeToString(salt, Base64.NO_WRAP))
-                    .putString("hash", Base64.encodeToString(hash, Base64.NO_WRAP))
+                    .putString("salt",Base64.encodeToString(salt,Base64.NO_WRAP))
+                    .putString("hash",Base64.encodeToString(hash,Base64.NO_WRAP))
                     .apply();
-
                 unlockSystem();
             } catch (Exception e) {
                 showMessage("SECURITY INITIALIZATION FAILED");
             }
-
             return;
         }
-
         try {
-            byte[] salt = Base64.decode(
-                security.getString("salt", ""), Base64.NO_WRAP
-            );
-
-            byte[] expected = Base64.decode(
-                security.getString("hash", ""), Base64.NO_WRAP
-            );
-
-            byte[] actual = hashPassword(password, salt);
-
-            if (MessageDigest.isEqual(expected, actual)) {
+            byte[] salt = Base64.decode(security.getString("salt",""),Base64.NO_WRAP);
+            byte[] expected = Base64.decode(security.getString("hash",""),Base64.NO_WRAP);
+            byte[] actual = hashPassword(password,salt);
+            if (MessageDigest.isEqual(expected,actual)) {
                 unlockSystem();
             } else {
                 passwordInput.setText("");
@@ -393,18 +358,11 @@ public class MainActivity extends Activity {
         }
     }
 
-    private byte[] hashPassword(String password, byte[] salt)
-        throws Exception {
-
-        PBEKeySpec spec = new PBEKeySpec(
-            password.toCharArray(), salt, 120000, 256
-        );
-
+    private byte[] hashPassword(String password,byte[] salt) throws Exception {
+        PBEKeySpec spec = new PBEKeySpec(password.toCharArray(),salt,120000,256);
         try {
-            return SecretKeyFactory
-                .getInstance("PBKDF2WithHmacSHA256")
-                .generateSecret(spec)
-                .getEncoded();
+            return SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
+                .generateSecret(spec).getEncoded();
         } finally {
             spec.clearPassword();
         }
@@ -412,124 +370,99 @@ public class MainActivity extends Activity {
 
     private void showMessage(String message) {
         if (terminalOutput != null) {
-            terminalOutput.setText(
-                terminalOutput.getText() + "\n\n> " + message
-            );
+            terminalOutput.setText(terminalOutput.getText()+"\n\n> "+message);
         }
     }
 
     private void unlockSystem() {
-        unlocked = true;
-        gateVisible = false;
+        unlocked=true;
+        gateVisible=false;
         handler.removeCallbacks(terminalAnimation);
-
         try {
-            ((InputMethodManager) getSystemService(INPUT_METHOD_SERVICE))
-                .hideSoftInputFromWindow(
-                    passwordInput.getWindowToken(), 0
-                );
+            ((InputMethodManager)getSystemService(INPUT_METHOD_SERVICE))
+                .hideSoftInputFromWindow(passwordInput.getWindowToken(),0);
         } catch (Exception ignored) {}
 
-        Window window = getWindow();
+        Window window=getWindow();
         window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-        window.setStatusBarColor(0xFF05080C);
-        window.setNavigationBarColor(0xFF05080C);
+        window.setStatusBarColor(0xFF080D0A);
+        window.setNavigationBarColor(0xFF080D0A);
         window.getDecorView().setSystemUiVisibility(0);
-
         setContentView(webView);
+        triggerSystemBoot();
     }
 
     public class JatBridge {
-
         @JavascriptInterface
         public String getApps() {
             JSONArray result = new JSONArray();
-
             try {
-                PackageManager pm = getPackageManager();
-
-                Intent intent = new Intent(Intent.ACTION_MAIN);
+                PackageManager pm=getPackageManager();
+                Intent intent=new Intent(Intent.ACTION_MAIN);
                 intent.addCategory(Intent.CATEGORY_LAUNCHER);
-
-                List<ResolveInfo> apps =
-                    pm.queryIntentActivities(intent, 0);
-
-                Collections.sort(apps, new Comparator<ResolveInfo>() {
-                    @Override
-                    public int compare(ResolveInfo a, ResolveInfo b) {
-                        return a.loadLabel(pm).toString()
-                            .compareToIgnoreCase(
-                                b.loadLabel(pm).toString()
-                            );
+                List<ResolveInfo> apps=pm.queryIntentActivities(intent,0);
+                Collections.sort(apps,new Comparator<ResolveInfo>() {
+                    @Override public int compare(ResolveInfo a,ResolveInfo b) {
+                        return a.loadLabel(pm).toString().compareToIgnoreCase(
+                            b.loadLabel(pm).toString()
+                        );
                     }
                 });
 
-                for (ResolveInfo info : apps) {
+                for (ResolveInfo info:apps) {
                     try {
-                        String packageName = info.activityInfo.packageName;
-                        String activityName = info.activityInfo.name;
-                        String label = info.loadLabel(pm).toString();
+                        if (info.activityInfo==null) continue;
+                        String packageName=info.activityInfo.packageName;
+                        String activityName=info.activityInfo.name;
+                        String label=info.loadLabel(pm).toString();
+                        Drawable drawable=info.loadIcon(pm);
 
-                        android.graphics.drawable.Drawable drawable =
-                            info.loadIcon(pm);
+                        int width=drawable.getIntrinsicWidth();
+                        int height=drawable.getIntrinsicHeight();
+                        if (width<=0) width=96;
+                        if (height<=0) height=96;
+                        width=Math.min(width,144);
+                        height=Math.min(height,144);
 
-                        int width = Math.max(1, drawable.getIntrinsicWidth());
-                        int height = Math.max(1, drawable.getIntrinsicHeight());
-
-                        width = Math.min(width, 192);
-                        height = Math.min(height, 192);
-
-                        Bitmap bitmap = Bitmap.createBitmap(
-                            width, height, Bitmap.Config.ARGB_8888
+                        Bitmap bitmap=Bitmap.createBitmap(
+                            width,height,Bitmap.Config.ARGB_8888
                         );
-
-                        Canvas canvas = new Canvas(bitmap);
-                        drawable.setBounds(0, 0, width, height);
+                        Canvas canvas=new Canvas(bitmap);
+                        drawable.setBounds(0,0,width,height);
                         drawable.draw(canvas);
 
-                        ByteArrayOutputStream stream =
-                            new ByteArrayOutputStream();
-
-                        bitmap.compress(
-                            Bitmap.CompressFormat.PNG, 90, stream
+                        ByteArrayOutputStream stream=new ByteArrayOutputStream();
+                        bitmap.compress(Bitmap.CompressFormat.PNG,88,stream);
+                        String icon=Base64.encodeToString(
+                            stream.toByteArray(),Base64.NO_WRAP
                         );
-
-                        String icon = Base64.encodeToString(
-                            stream.toByteArray(), Base64.NO_WRAP
-                        );
-
-                        JSONObject app = new JSONObject();
-                        app.put("name", label);
-                        app.put("package", packageName);
-                        app.put("activity", activityName);
-                        app.put("icon", "data:image/png;base64," + icon);
-
-                        result.put(app);
                         bitmap.recycle();
+
+                        JSONObject app=new JSONObject();
+                        app.put("name",label);
+                        app.put("package",packageName);
+                        app.put("activity",activityName);
+                        app.put("icon","data:image/png;base64,"+icon);
+                        result.put(app);
                     } catch (Exception ignored) {}
                 }
             } catch (Exception ignored) {}
-
             return result.toString();
         }
 
         @JavascriptInterface
-        public boolean launchApp(String packageName, String activityName) {
+        public boolean launchApp(String packageName,String activityName) {
             try {
-                Intent launch = new Intent(Intent.ACTION_MAIN);
+                Intent launch=new Intent(Intent.ACTION_MAIN);
                 launch.addCategory(Intent.CATEGORY_LAUNCHER);
-                launch.setClassName(packageName, activityName);
+                launch.setClassName(packageName,activityName);
                 launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(launch);
                 return true;
             } catch (Exception e) {
                 try {
-                    Intent fallback =
-                        getPackageManager().getLaunchIntentForPackage(
-                            packageName
-                        );
-
-                    if (fallback != null) {
+                    Intent fallback=getPackageManager().getLaunchIntentForPackage(packageName);
+                    if (fallback!=null) {
                         startActivity(fallback);
                         return true;
                     }
@@ -541,7 +474,7 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void openDeviceSettings() {
             try {
-                Intent intent = new Intent(Settings.ACTION_SETTINGS);
+                Intent intent=new Intent(Settings.ACTION_SETTINGS);
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent);
             } catch (Exception ignored) {}
@@ -550,9 +483,9 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void openAppInfo(String packageName) {
             try {
-                Intent intent = new Intent(
+                Intent intent=new Intent(
                     Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                    Uri.parse("package:" + packageName)
+                    Uri.parse("package:"+packageName)
                 );
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                 startActivity(intent);
@@ -568,39 +501,31 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-
-        if (!unlocked && !gateVisible) {
-            showGate();
-        }
+        if (!unlocked && !gateVisible) showGate();
     }
 
     @Override
     public void onBackPressed() {
         if (!unlocked) return;
-
-        if (webView != null) {
+        if (webView!=null) {
             webView.evaluateJavascript(
-                "if(window.goBackScreen){goBackScreen();}", null
+                "if(window.goBackScreen){goBackScreen();}",null
             );
         }
     }
 
     @Override
     protected void onDestroy() {
-        gateVisible = false;
+        gateVisible=false;
         handler.removeCallbacks(terminalAnimation);
-
         if (receiverRegistered) {
-            try {
-                unregisterReceiver(screenReceiver);
-            } catch (Exception ignored) {}
+            try { unregisterReceiver(screenReceiver); }
+            catch (Exception ignored) {}
         }
-
-        if (webView != null) {
+        if (webView!=null) {
             webView.destroy();
-            webView = null;
+            webView=null;
         }
-
         super.onDestroy();
     }
 }
