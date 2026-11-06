@@ -337,28 +337,57 @@ public class MainActivity extends Activity {
     }
 
 
+
     private void showQuickPad() {
+        showPinEntry(false, null, security.contains("quick_pin_hash"));
+    }
+
+    private void showPinEntry(boolean confirming, String firstPin, boolean pinExists) {
         unlocked = false;
         gateVisible = true;
         handler.removeCallbacks(terminalAnimation);
 
-        LinearLayout screen = new LinearLayout(this);
-        screen.setOrientation(LinearLayout.VERTICAL);
-        screen.setGravity(Gravity.CENTER);
-        screen.setPadding(dp(25), dp(20), dp(25), dp(20));
-        screen.setBackgroundColor(0xFF050907);
+        FrameLayout frame = new FrameLayout(this);
+        frame.setBackgroundColor(0xFF050907);
 
-        TextView back = text("‹", 34, 0xFF65EAB2);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setGravity(Gravity.CENTER);
+        panel.setPadding(dp(22), dp(15), dp(22), dp(18));
+
+        FrameLayout.LayoutParams panelParams = new FrameLayout.LayoutParams(
+            -1, -2, Gravity.CENTER
+        );
+        frame.addView(panel, panelParams);
+
+        LinearLayout top = new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView back = text("‹", 32, 0xFF65EAB2);
         back.setGravity(Gravity.CENTER);
-        screen.addView(back, new LinearLayout.LayoutParams(-1, dp(48)));
+        top.addView(back, new LinearLayout.LayoutParams(dp(48), dp(46)));
         back.setOnClickListener(v -> showGate());
 
-        TextView dots = text("○  ○", 25, 0xFF65EAB2);
+        TextView heading = text(
+            confirming ? "CONFIRM PIN" :
+                (pinExists ? "ENTER PIN" : "CREATE PIN"),
+            11, 0xFF9BC99D
+        );
+        heading.setGravity(Gravity.CENTER);
+        heading.setTypeface(android.graphics.Typeface.MONOSPACE, 1);
+        top.addView(heading, new LinearLayout.LayoutParams(0, dp(46), 1f));
+
+        View topSpace = new View(this);
+        top.addView(topSpace, new LinearLayout.LayoutParams(dp(48), dp(46)));
+        panel.addView(top);
+
+        TextView dots = text("○     ○", 25, 0xFF65EAB2);
         dots.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams dotsParams =
-            new LinearLayout.LayoutParams(-1, dp(65));
-        dotsParams.bottomMargin = dp(15);
-        screen.addView(dots, dotsParams);
+            new LinearLayout.LayoutParams(-1, dp(66));
+        dotsParams.topMargin = dp(10);
+        dotsParams.bottomMargin = dp(17);
+        panel.addView(dots, dotsParams);
 
         String[][] keys = {
             {"1", "2", "3"},
@@ -374,14 +403,16 @@ public class MainActivity extends Activity {
             row.setGravity(Gravity.CENTER);
 
             LinearLayout.LayoutParams rowParams =
-                new LinearLayout.LayoutParams(-1, dp(62));
-            rowParams.bottomMargin = dp(7);
-            screen.addView(row, rowParams);
+                new LinearLayout.LayoutParams(-1, dp(61));
+            rowParams.bottomMargin = dp(9);
+            panel.addView(row, rowParams);
 
             for (String key : rowKeys) {
                 TextView button = text(key, 21, 0xFFD6E5D8);
                 button.setGravity(Gravity.CENTER);
-                button.setBackground(background(0xFF0C1510, 0xFF294B34));
+                button.setBackground(background(0xFF101B14, 0xFF294B34));
+                button.setClickable(true);
+                button.setFocusable(true);
 
                 LinearLayout.LayoutParams keyParams =
                     new LinearLayout.LayoutParams(0, -1, 1f);
@@ -403,39 +434,54 @@ public class MainActivity extends Activity {
                     }
 
                     dots.setText(
-                        (entered.length() > 0 ? "●" : "○") +
-                        "  " +
-                        (entered.length() > 1 ? "●" : "○")
+                        (entered.length() >= 1 ? "●" : "○") +
+                        "     " +
+                        (entered.length() >= 2 ? "●" : "○")
                     );
 
                     if (entered.length() == 2) {
-                        verifyQuickCode(entered.toString());
+                        String value = entered.toString();
+
+                        if (!pinExists) {
+                            if (!confirming) {
+                                showPinEntry(true, value, false);
+                            } else if (value.equals(firstPin)) {
+                                saveQuickPin(value);
+                            } else {
+                                showPinEntry(false, null, false);
+                            }
+                        } else {
+                            verifyQuickCode(value);
+                        }
                     }
                 });
             }
         }
 
-        setContentView(screen);
+        setContentView(frame);
+    }
+
+    private void saveQuickPin(String code) {
+        try {
+            byte[] salt = new byte[16];
+            new SecureRandom().nextBytes(salt);
+            byte[] hash = hashPassword(code, salt);
+
+            security.edit()
+                .putString("quick_pin_salt",
+                    Base64.encodeToString(salt, Base64.NO_WRAP))
+                .putString("quick_pin_hash",
+                    Base64.encodeToString(hash, Base64.NO_WRAP))
+                .apply();
+
+            showFingerprintGate();
+        } catch (Exception e) {
+            showGate();
+        }
     }
 
     private void verifyQuickCode(String code) {
         try {
-            if (!security.contains("quick_pin_hash")) {
-                byte[] salt = new byte[16];
-                new SecureRandom().nextBytes(salt);
-                byte[] hash = hashPassword(code, salt);
-
-                security.edit()
-                    .putString("quick_pin_salt",
-                        Base64.encodeToString(salt, Base64.NO_WRAP))
-                    .putString("quick_pin_hash",
-                        Base64.encodeToString(hash, Base64.NO_WRAP))
-                    .apply();
-
-                showFingerprintGate();
-                return;
-            }
-
             byte[] salt = Base64.decode(
                 security.getString("quick_pin_salt", ""),
                 Base64.NO_WRAP
@@ -452,7 +498,7 @@ public class MainActivity extends Activity {
                 showQuickPad();
             }
         } catch (Exception e) {
-            showQuickPad();
+            showGate();
         }
     }
 
@@ -461,26 +507,27 @@ public class MainActivity extends Activity {
         gateVisible = true;
         handler.removeCallbacks(terminalAnimation);
 
-        LinearLayout screen = new LinearLayout(this);
-        screen.setOrientation(LinearLayout.VERTICAL);
-        screen.setGravity(Gravity.CENTER);
-        screen.setBackgroundColor(0xFF050907);
+        FrameLayout frame = new FrameLayout(this);
+        frame.setBackgroundColor(0xFF050907);
 
-        TextView back = text("‹", 34, 0xFF65EAB2);
+        TextView back = text("‹", 32, 0xFF65EAB2);
         back.setGravity(Gravity.CENTER);
-        screen.addView(back, new LinearLayout.LayoutParams(-1, dp(55)));
+        FrameLayout.LayoutParams backParams = new FrameLayout.LayoutParams(
+            dp(54), dp(54), Gravity.TOP | Gravity.LEFT
+        );
+        backParams.setMargins(dp(17), dp(12), 0, 0);
+        frame.addView(back, backParams);
         back.setOnClickListener(v -> showQuickPad());
 
         QuickFingerprintView fingerprint = new QuickFingerprintView(
             this, () -> unlockSystem()
         );
 
-        LinearLayout.LayoutParams fingerprintParams =
-            new LinearLayout.LayoutParams(dp(270), dp(310));
-        fingerprintParams.gravity = Gravity.CENTER;
-        screen.addView(fingerprint, fingerprintParams);
+        FrameLayout.LayoutParams fingerprintParams =
+            new FrameLayout.LayoutParams(dp(270), dp(310), Gravity.CENTER);
+        frame.addView(fingerprint, fingerprintParams);
 
-        setContentView(screen);
+        setContentView(frame);
     }
 
     private class QuickFingerprintView extends View {
@@ -496,7 +543,6 @@ public class MainActivity extends Activity {
                 if (!scanning) return;
 
                 long elapsed = System.currentTimeMillis() - scanStarted;
-
                 if (elapsed >= SCAN_DURATION) {
                     scanning = false;
                     invalidate();
@@ -519,39 +565,65 @@ public class MainActivity extends Activity {
         protected void onDraw(Canvas canvas) {
             super.onDraw(canvas);
 
+            float d = getResources().getDisplayMetrics().density;
             float cx = getWidth() / 2f;
             float cy = getHeight() / 2f;
-            float d = getResources().getDisplayMetrics().density;
 
+            // Nested curved ridges form a fingerprint rather than oval rings.
+            paint.setColor(0xFF65EAB2);
             paint.setStyle(Paint.Style.STROKE);
             paint.setStrokeCap(Paint.Cap.ROUND);
             paint.setStrokeJoin(Paint.Join.ROUND);
-            paint.setStrokeWidth(2.1f * d);
-            paint.setColor(0xFF65EAB2);
-            paint.setAlpha(210);
+            paint.setStrokeWidth(2.0f * d);
+            paint.setAlpha(225);
 
-            for (int i = 0; i < 9; i++) {
-                float rx = (22f + i * 7.2f) * d;
-                float ry = (29f + i * 8.2f) * d;
-                RectF oval = new RectF(
-                    cx - rx, cy - ry, cx + rx, cy + ry
+            for (int i = 0; i < 11; i++) {
+                float rx = (24f + i * 7.0f) * d;
+                float ry = (28f + i * 7.5f) * d;
+
+                Path ridge = new Path();
+                ridge.moveTo(cx - rx, cy + ry * 0.48f);
+                ridge.cubicTo(
+                    cx - rx * 1.08f, cy - ry * 0.55f,
+                    cx - rx * 0.48f, cy - ry * 1.05f,
+                    cx + rx * 0.08f, cy - ry * 0.98f
                 );
-                canvas.drawArc(oval, 205f, 310f, false, paint);
+                ridge.cubicTo(
+                    cx + rx * 0.83f, cy - ry * 0.88f,
+                    cx + rx * 1.08f, cy - ry * 0.12f,
+                    cx + rx, cy + ry * 0.48f
+                );
+                ridge.cubicTo(
+                    cx + rx * 0.94f, cy + ry * 0.92f,
+                    cx + rx * 0.36f, cy + ry * 0.84f,
+                    cx + rx * 0.10f, cy + ry * 0.56f
+                );
+                canvas.drawPath(ridge, paint);
             }
 
-            Path inner = new Path();
-            inner.moveTo(cx - 15f*d, cy + 40f*d);
-            inner.cubicTo(
-                cx - 27f*d, cy - 8f*d,
-                cx + 27f*d, cy - 48f*d,
-                cx + 12f*d, cy - 3f*d
+            Path center = new Path();
+            center.moveTo(cx - 9f*d, cy + 48f*d);
+            center.cubicTo(
+                cx - 31f*d, cy + 13f*d,
+                cx - 20f*d, cy - 34f*d,
+                cx + 10f*d, cy - 39f*d
             );
-            inner.cubicTo(
-                cx + 4f*d, cy + 25f*d,
-                cx - 9f*d, cy + 19f*d,
-                cx - 7f*d, cy - 2f*d
+            center.cubicTo(
+                cx + 44f*d, cy - 43f*d,
+                cx + 44f*d, cy + 8f*d,
+                cx + 13f*d, cy + 17f*d
             );
-            canvas.drawPath(inner, paint);
+            center.cubicTo(
+                cx - 6f*d, cy + 22f*d,
+                cx - 13f*d, cy - 1f*d,
+                cx + 1f*d, cy - 12f*d
+            );
+            center.cubicTo(
+                cx + 14f*d, cy - 22f*d,
+                cx + 25f*d, cy - 5f*d,
+                cx + 15f*d, cy + 5f*d
+            );
+            canvas.drawPath(center, paint);
 
             if (scanning) {
                 float progress = Math.min(
@@ -560,27 +632,26 @@ public class MainActivity extends Activity {
                         (float) SCAN_DURATION
                 );
 
-                float top = cy - 75f*d;
-                float bottom = cy + 75f*d;
-                float y;
+                float top = cy - 112f*d;
+                float bottom = cy + 112f*d;
+                float y = progress <= 0.5f
+                    ? top + progress * 2f * (bottom - top)
+                    : bottom - (progress - 0.5f) * 2f * (bottom - top);
 
-                if (progress <= 0.5f) {
-                    y = top + progress * 2f * (bottom - top);
-                } else {
-                    y = bottom - (progress - 0.5f) * 2f * (bottom - top);
-                }
-
-                paint.setStrokeWidth(11f*d);
-                paint.setAlpha(35);
-                canvas.drawLine(
-                    cx - 88f*d, y, cx + 88f*d, y, paint
+                int save = canvas.save();
+                canvas.clipRect(
+                    cx - 100f*d, top, cx + 100f*d, bottom
                 );
+
+                paint.setStrokeWidth(13f*d);
+                paint.setAlpha(35);
+                canvas.drawLine(cx - 100f*d, y, cx + 100f*d, y, paint);
 
                 paint.setStrokeWidth(2.2f*d);
                 paint.setAlpha(255);
-                canvas.drawLine(
-                    cx - 88f*d, y, cx + 88f*d, y, paint
-                );
+                canvas.drawLine(cx - 100f*d, y, cx + 100f*d, y, paint);
+
+                canvas.restoreToCount(save);
             }
         }
 
