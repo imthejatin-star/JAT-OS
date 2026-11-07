@@ -724,3 +724,280 @@ document.addEventListener("DOMContentLoaded",()=>{
     initMatrix();
     startSystemStream();
 });
+
+
+/* JAT OS HACKER REFINEMENT */
+(() => {
+  const FAV_KEY = "jat_os_favourite_apps_v1";
+  const readFavs = () => {
+    try {
+      const v = JSON.parse(localStorage.getItem(FAV_KEY) || "[]");
+      return Array.isArray(v) ? v : [];
+    } catch (_) { return []; }
+  };
+  const writeFavs = v => localStorage.setItem(FAV_KEY, JSON.stringify(v));
+
+  function appIdentity(card) {
+    const packageName =
+      card.dataset.package ||
+      card.dataset.packagename ||
+      card.dataset.appPackage ||
+      card.getAttribute("data-app-package") || "";
+
+    const launchText = card.getAttribute("onclick") || "";
+    const match = launchText.match(/launchApp\s*\(\s*['"]([^'"]+)/);
+    const pkg = packageName || (match ? match[1] : "");
+
+    const nameNode = card.querySelector(
+      ".app-name, .app-title, .app-label, .name, h3, h4, p"
+    );
+    const name = (nameNode?.textContent || card.innerText || "")
+      .trim().split("\n")[0].slice(0, 60);
+
+    return { id: pkg || name, name, pkg };
+  }
+
+  function appCards() {
+    const selectors = [
+      ".app-card", ".app-item", ".application-card",
+      "[data-package]", "[data-app-package]", "[data-packagename]"
+    ];
+    const found = new Set();
+    selectors.forEach(s => document.querySelectorAll(s).forEach(el => {
+      if (el.closest(".jat-favourites")) return;
+      if (el.querySelector("img") || el.dataset.package ||
+          el.dataset.packagename || el.dataset.appPackage) found.add(el);
+    }));
+    return [...found].filter(el => appIdentity(el).id);
+  }
+
+  function getFavouriteHost() {
+    let host = document.querySelector("#jat-favourites");
+    if (host) return host;
+
+    host = document.createElement("section");
+    host.id = "jat-favourites";
+    host.className = "jat-favourites";
+    host.innerHTML =
+      '<div class="jat-favourites-head"><span>★ PINNED APPLICATIONS</span><span>QUICK ACCESS</span></div>' +
+      '<div class="jat-favourites-grid" id="jat-favourites-grid"></div>';
+
+    const main = document.querySelector(
+      "main, #main-system, .main-content, .dashboard, #home"
+    ) || document.body;
+
+    const firstSection = main.querySelector(
+      ".app-grid, #app-grid, .apps-grid, .app-drawer, .home-section"
+    );
+    if (firstSection && firstSection.parentNode) {
+      firstSection.parentNode.insertBefore(host, firstSection);
+    } else {
+      main.insertBefore(host, main.firstChild);
+    }
+    return host;
+  }
+
+  function renderFavourites() {
+    const host = getFavouriteHost();
+    const grid = host.querySelector("#jat-favourites-grid");
+    if (!grid) return;
+
+    const favs = readFavs();
+    const cards = appCards();
+    const byId = new Map(cards.map(card => [appIdentity(card).id, card]));
+
+    grid.replaceChildren();
+
+    favs.forEach(id => {
+      const original = byId.get(id);
+      if (!original) return;
+
+      const info = appIdentity(original);
+      const tile = document.createElement("button");
+      tile.type = "button";
+      tile.className = "jat-favourite-tile";
+
+      const image = original.querySelector("img");
+      if (image) {
+        const icon = document.createElement("img");
+        icon.src = image.src;
+        icon.alt = "";
+        tile.appendChild(icon);
+      }
+
+      const label = document.createElement("span");
+      label.textContent = info.name || "APPLICATION";
+      tile.appendChild(label);
+
+      tile.addEventListener("click", () => {
+        const launch = original.querySelector(
+          "button:not(.jat-favourite-star), [role='button']"
+        );
+        if (launch) launch.click();
+        else original.click();
+      });
+      grid.appendChild(tile);
+    });
+
+    if (!favs.length) {
+      const empty = document.createElement("div");
+      empty.textContent = "NO PINNED APPS // SELECT ★ IN APP DRAWER";
+      empty.style.cssText = "font:10px monospace;color:#66816d;padding:8px 2px";
+      grid.appendChild(empty);
+    }
+  }
+
+  function addFavouriteControls() {
+    appCards().forEach(card => {
+      if (card.querySelector(".jat-favourite-star")) return;
+
+      const info = appIdentity(card);
+      if (!info.id) return;
+
+      card.classList.add("jat-favourite-anchor");
+
+      const star = document.createElement("button");
+      star.type = "button";
+      star.className = "jat-favourite-star";
+      star.setAttribute("aria-label", "Toggle favourite");
+      star.textContent = readFavs().includes(info.id) ? "★" : "☆";
+      star.classList.toggle("active", readFavs().includes(info.id));
+
+      star.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+
+        const favs = readFavs();
+        const index = favs.indexOf(info.id);
+        if (index >= 0) favs.splice(index, 1);
+        else favs.push(info.id);
+
+        writeFavs(favs);
+        star.textContent = favs.includes(info.id) ? "★" : "☆";
+        star.classList.toggle("active", favs.includes(info.id));
+        renderFavourites();
+      });
+
+      card.appendChild(star);
+    });
+    renderFavourites();
+  }
+
+  // Remove only non-functional prototype wording from visible text nodes.
+  function cleanPrototypeLabels() {
+    const unwanted = [
+      /^user interface$/i,
+      /^runs locally$/i,
+      /^running locally$/i,
+      /^local interface$/i,
+      /^prototype$/i,
+      /^demo version$/i,
+      /^test interface$/i,
+      /^sample interface$/i
+    ];
+
+    const walker = document.createTreeWalker(
+      document.body, NodeFilter.SHOW_TEXT
+    );
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+
+    nodes.forEach(node => {
+      const value = (node.nodeValue || "").trim();
+      if (!value || !unwanted.some(rx => rx.test(value))) return;
+      const parent = node.parentElement;
+      if (!parent || parent.closest("button, input, textarea, select, script")) return;
+      node.nodeValue = node.nodeValue.replace(value, "");
+      if (!parent.textContent.trim()) parent.style.display = "none";
+    });
+  }
+
+  // Re-run the entrance animation only after the password gate is submitted.
+  function runSystemIgnition() {
+    const selectors = [
+      "main > *",
+      "#main-system > *",
+      ".main-content > *",
+      ".dashboard > *",
+      "#home > *"
+    ];
+    let items = [];
+    selectors.forEach(selector => {
+      document.querySelectorAll(selector).forEach(el => {
+        if (el.closest("#login-screen, #lock-screen, .login-screen, .lock-screen")) return;
+        if (el.id === "jat-favourites") return;
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) items.push(el);
+      });
+    });
+    items = [...new Set(items)];
+
+    if (!items.length) {
+      const main = document.querySelector(
+        "#main-system, main, .main-content, .dashboard, #home"
+      );
+      if (main) items = [...main.children].filter(el =>
+        !["SCRIPT", "STYLE"].includes(el.tagName) &&
+        el.id !== "jat-favourites"
+      );
+    }
+
+    items.forEach(el => {
+      el.classList.remove("jat-startup-visible");
+      el.classList.add("jat-startup-hidden");
+    });
+
+    // Allow the unlocked system to render before revealing each feature.
+    setTimeout(() => {
+      items.forEach((el, i) => {
+        setTimeout(() => {
+          el.classList.remove("jat-startup-hidden");
+          el.classList.add("jat-startup-visible");
+        }, i * 1150);
+      });
+    }, 350);
+  }
+
+  function initializeButton(target) {
+    const button = target.closest("button, [role='button'], input[type='button'], input[type='submit']");
+    if (!button) return false;
+    const text = (
+      button.innerText || button.value || button.getAttribute("aria-label") || ""
+    ).trim().replace(/\s+/g, " ").toLowerCase();
+    return text.includes("initialize system") || text === "initialize";
+  }
+
+  document.addEventListener("click", event => {
+    if (!initializeButton(event.target)) return;
+    setTimeout(() => {
+      runSystemIgnition();
+      setTimeout(addFavouriteControls, 500);
+    }, 250);
+  }, true);
+
+  // Keep the existing terminal interface and its functions intact.
+  // Refresh app discovery/favourite controls when the app list is populated.
+  function refresh() {
+    cleanPrototypeLabels();
+    addFavouriteControls();
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", refresh, { once: true });
+  } else {
+    refresh();
+  }
+
+  const observer = new MutationObserver(() => {
+    if (window.__jatFavouriteRefreshPending) return;
+    window.__jatFavouriteRefreshPending = true;
+    requestAnimationFrame(() => {
+      window.__jatFavouriteRefreshPending = false;
+      addFavouriteControls();
+      cleanPrototypeLabels();
+    });
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+})();
